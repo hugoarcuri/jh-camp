@@ -316,7 +316,7 @@
   }
 
   // ---------- global payments ----------
-  function openGlobalPaymentModal() {
+  function openGlobalPaymentModal(camperId) {
     const sel = document.getElementById("gpCamper");
     sel.innerHTML = "";
     state.campers.sort((a,b)=>nameOf(a).localeCompare(nameOf(b))).forEach(c => {
@@ -326,6 +326,7 @@
     });
     document.getElementById("globalPaymentForm").reset();
     document.getElementById("gpDate").value = todayISO();
+    if (camperId) document.getElementById("gpCamper").value = camperId;
     openModal("globalPaymentModalBackdrop");
   }
   async function onSaveGlobalPayment(e) {
@@ -359,9 +360,16 @@
         <td>${escapeHtml(p.payment_mode || "-")}</td>
         <td><span class="amount">${money(p.amount)}</span></td>
         <td>${escapeHtml(p.note || "")}</td>
-        <td><button class="btn small danger icon-action" data-del="${p.id}" title="Eliminar" aria-label="Eliminar">🗑️</button></td>`;
-      tbody.appendChild(tr);
-      tr.querySelector("button").addEventListener("click", () => deletePayment(p.id));
+         <td class="actions">
+           <button class="btn small icon-action" data-addpay="${p.camper_id}" title="Otro pago" aria-label="Otro pago">➕</button>
+           <button class="btn small danger icon-action" data-del="${p.id}" title="Eliminar" aria-label="Eliminar">🗑️</button>
+         </td>`;
+
+       tbody.appendChild(tr);
+       const addBtn = tr.querySelector("[data-addpay]");
+       if (addBtn && p.camper_id) addBtn.addEventListener("click", () => openGlobalPaymentModal(p.camper_id));
+       const delBtn = tr.querySelector("[data-del]");
+       if (delBtn) delBtn.addEventListener("click", () => deletePayment(p.id));
     });
     document.getElementById("paymentsEmpty").classList.toggle("show", list.length === 0);
   }

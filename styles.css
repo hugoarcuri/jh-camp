@@ -119,3 +119,7 @@ body { background: linear-gradient(180deg,var(--bg) 0%,var(--surface) 100%); }
 [data-theme="dark"] .balance-box { background:var(--surface); }
 [data-theme="dark"] .topbar-right .btn.icon-btn { background:rgba(255,255,255,.12); }
 
+
+.amount{font-size:15px;font-weight:600;}
+.balance-box .bb-value{font-size:18px;}
+

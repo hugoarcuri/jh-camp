@@ -169,8 +169,8 @@
         <td>${escapeHtml(c.phone || "-")}</td>
         <td>${escapeHtml(c.email || "-")}</td>
         <td>${escapeHtml(c.church || "-")}</td>
-        <td>${money(paid)}</td>
-        <td class="${due > 0 ? "due" : "ok"}">${isSettled(paid) ? '<span class="saldado">Saldado</span>' : money(due)}</td>
+        <td><span class="amount">${money(paid)}</span></td>
+        <td class="${due > 0 ? "due" : "ok"}">${isSettled(paid) ? '<span class="saldado">Saldado</span>' : '<span class="amount">' + money(due) + '</span>'}</td>
         <td class="actions">
           <button class="btn small icon-action" data-action="edit" data-id="${c.id}" title="Editar" aria-label="Editar">✏️</button>
           <button class="btn small icon-action" data-action="payments" data-id="${c.id}" title="Pagos" aria-label="Pagos">💳</button>
@@ -281,7 +281,7 @@
       tr.innerHTML = `
         <td>${escapeHtml(p.payment_date || "-")}</td>
         <td>${escapeHtml(p.payment_mode || "-")}</td>
-        <td>${money(p.amount)}</td>
+        <td><span class="amount">${money(p.amount)}</span></td>
         <td>${escapeHtml(p.note || "")}</td>
         <td><button class="btn small danger icon-action" data-del="${p.id}" title="Eliminar" aria-label="Eliminar">🗑️</button></td>`;
       tbody.appendChild(tr);
@@ -351,7 +351,7 @@
         <td>${escapeHtml(p.payment_date || "-")}</td>
         <td>${escapeHtml(c ? nameOf(c) : "(eliminado)")}</td>
         <td>${escapeHtml(p.payment_mode || "-")}</td>
-        <td>${money(p.amount)}</td>
+        <td><span class="amount">${money(p.amount)}</span></td>
         <td>${escapeHtml(p.note || "")}</td>
         <td><button class="btn small danger icon-action" data-del="${p.id}" title="Eliminar" aria-label="Eliminar">🗑️</button></td>`;
       tbody.appendChild(tr);

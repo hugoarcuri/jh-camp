@@ -36,10 +36,34 @@
     t.classList.add("show");
     setTimeout(() => { t.classList.remove("show"); setTimeout(() => t.classList.add("hidden"), 200); }, 2800);
   }
-  function calcPrice() {
-    const until = new Date(cfg.PRICE_EARLY_UNTIL + "T23:59:59");
+  function currentPrice() {
     const now = new Date();
-    return now <= until ? cfg.PRICE_EARLY : cfg.PRICE_REGULAR;
+    for (const tier of (cfg.PRICE_TIERS || [])) {
+      if (now <= new Date(tier.until + "T23:59:59")) return tier.price;
+    }
+    const last = (cfg.PRICE_TIERS || []).slice(-1)[0];
+    return last ? last.price : 0;
+  }
+  function lockedPrice(paid) {
+    const tiers = [...(cfg.PRICE_TIERS || [])].sort((a,b)=>a.price-b.price);
+    let locked = null;
+    for (const t of tiers) {
+      if (paid >= t.price) locked = t.price;
+    }
+    // pago completo del primer tramo o superior => saldado
+    if (paid >= (cfg.FIRST_TIER_PRICE || 0)) {
+      if (locked === null) locked = cfg.FIRST_TIER_PRICE;
+    }
+    return locked;
+  }
+  function isSettled(paid) { return paid >= (cfg.FIRST_TIER_PRICE || 0); }
+  function requiredPrice(paid) {
+    const lp = lockedPrice(paid);
+    return lp !== null ? lp : currentPrice();
+  }
+  function saldoFor(paid) {
+    if (isSettled(paid)) return 0;
+    return Math.max(0, currentPrice() - paid);
   }
   function paymentsFor(camperId) { return state.payments.filter(p => p.camper_id === camperId); }
   function paidFor(camperId) { return paymentsFor(camperId).reduce((s, p) => s + Number(p.amount || 0), 0); }
@@ -70,7 +94,7 @@
     }
 
     // price badge
-    state.currentPrice = calcPrice();
+    state.currentPrice = currentPrice();
     document.getElementById("priceValue").textContent = money(state.currentPrice) +
       " (campamento " + cfg.CAMP_DATE + ")";
 
@@ -119,7 +143,7 @@
     tbody.innerHTML = "";
     state.filtered.forEach(c => {
       const paid = paidFor(c.id);
-      const due = state.currentPrice - paid;
+      const due = saldoFor(paid);
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td><strong>${escapeHtml(nameOf(c))}</strong></td>
@@ -129,7 +153,7 @@
         <td>${escapeHtml(c.email || "-")}</td>
         <td>${escapeHtml(c.church || "-")}</td>
         <td>${money(paid)}</td>
-        <td class="${due > 0 ? "due" : "ok"}">${money(Math.max(0, due))}${due < 0 ? " (a favor)" : ""}</td>
+        <td class="${due > 0 ? "due" : "ok"}">${isSettled(paid) ? "Saldado" : money(due)}</td>
         <td class="actions">
           <button class="btn small" data-action="edit" data-id="${c.id}">Editar</button>
           <button class="btn small" data-action="payments" data-id="${c.id}">Pagos</button>
@@ -227,9 +251,10 @@
   function renderCamperPayments(camperId) {
     const list = paymentsFor(camperId).sort((a,b) => (b.payment_date||"").localeCompare(a.payment_date||""));
     const paid = list.reduce((s,p)=>s+Number(p.amount||0),0);
-    const due = state.currentPrice - paid;
+    const due = saldoFor(paid);
+    const rp = requiredPrice(paid);
     document.getElementById("balanceBox").innerHTML = `
-      <div><div class="bb-label">Precio vigente</div><div class="bb-value">${money(state.currentPrice)}</div></div>
+      <div><div class="bb-label">Precio aplicable</div><div class="bb-value">${money(rp)}</div></div>
       <div><div class="bb-label">Pagado</div><div class="bb-value">${money(paid)}</div></div>
       <div><div class="bb-label">Saldo</div><div class="bb-value">${money(Math.max(0,due))}${due<0?" (a favor)":""}</div></div>`;
     const tbody = document.getElementById("camperPaymentsTbody");
@@ -332,10 +357,11 @@
   // ---------- dashboard ----------
   function renderDashboard() {
     const totalPaid = state.payments.reduce((s,p)=>s+Number(p.amount||0),0);
-    const expected = state.campers.length * state.currentPrice;
+    const expected = state.campers.reduce((s,c)=>s+requiredPrice(paidFor(c.id)),0);
+    const totalDue = state.campers.reduce((s,c)=>s+saldoFor(paidFor(c.id)),0);
     document.getElementById("statCampers").textContent = state.campers.length;
     document.getElementById("statPaid").textContent = money(totalPaid);
     document.getElementById("statExpected").textContent = money(expected);
-    document.getElementById("statDue").textContent = money(Math.max(0, expected - totalPaid));
+    document.getElementById("statDue").textContent = money(totalDue);
   }
 })();

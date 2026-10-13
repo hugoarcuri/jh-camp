@@ -36,7 +36,7 @@ Podés subir la carpeta a Netlify, Vercel, GitHub Pages o cualquier hosting est�
 
 - Acampantes: agregar, editar, eliminar. Datos: apellido y nombre, DNI, fecha de nacimiento (edad calculada al 18/01/2027), celular, mail, iglesia.
 - Pagos: agregar por acampante o desde la sección pagos, con modo (transferencia, efectivo, etc.), fecha y nota. Muestra saldo pagado y saldo a cobrar.
-- Precio dinámico por fecha: hasta 31/10/2026 = $270.000; después = $320.000. El saldo se recalcula según el precio vigente (si no terminó de pagar y cambió la fecha, se ajusta).
+- Precios por tramos: hasta 30/09/2026 = $230.000; hasta 30/11/2026 = $270.000; hasta el campamento (18/01/2027) = $320.000. Si la persona ya pagó el tramo completo ($230.000 o más), queda saldada; si no terminó de pagar, el saldo se recalcula con el precio vigente cuando se pasa la fecha.
 - Resumen con totales.
 
 ## Notas de seguridad

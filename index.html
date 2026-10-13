@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Campamento Cristiano - Gestión</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="logo">Campamento</span>
+        <span class="subtitle">Gestión de acampantes y pagos</span>
+      </div>
+      <div class="price-badge" id="priceBadge">
+        <span class="price-label">Precio vigente</span>
+        <span class="price-value" id="priceValue">-</span>
+      </div>
+    </div>
+  </header>
+
+  <div id="configWarning" class="config-warning hidden">
+    Falta configurar Supabase. Editá <strong>config.js</strong> con tu URL y anon key (ver README.md).
+  </div>
+
+  <main class="container">
+    <nav class="tabs">
+      <button class="tab active" data-tab="campers">Acampantes</button>
+      <button class="tab" data-tab="payments">Pagos</button>
+      <button class="tab" data-tab="dashboard">Resumen</button>
+    </nav>
+
+    <section id="tab-campers" class="tab-panel active">
+      <div class="panel-header">
+        <h1>Acampantes</h1>
+        <div class="panel-actions">
+          <input type="search" id="searchInput" placeholder="Buscar por nombre, DNI, iglesia..." />
+          <button id="btnAddCamper" class="btn primary">+ Agregar acampante</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table" id="campersTable">
+          <thead>
+            <tr>
+              <th>Apellido y Nombre</th>
+              <th>DNI</th>
+              <th>Edad</th>
+              <th>Celular</th>
+              <th>Mail</th>
+              <th>Iglesia</th>
+              <th>Pagado</th>
+              <th>Saldo</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="campersTbody"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="campersEmpty">No hay acampantes cargados.</div>
+    </section>
+
+    <section id="tab-payments" class="tab-panel">
+      <div class="panel-header">
+        <h1>Pagos</h1>
+        <button id="btnAddPayment" class="btn primary">+ Agregar pago</button>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table" id="paymentsTable">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Acampante</th>
+              <th>Modo</th>
+              <th>Monto</th>
+              <th>Nota</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="paymentsTbody"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="paymentsEmpty">No hay pagos registrados.</div>
+    </section>
+
+    <section id="tab-dashboard" class="tab-panel">
+      <h1>Resumen</h1>
+      <div class="cards">
+        <div class="card">
+          <div class="card-label">Acampantes</div>
+          <div class="card-value" id="statCampers">0</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Recaudado</div>
+          <div class="card-value" id="statPaid">0</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Esperado (precio vigente)</div>
+          <div class="card-value" id="statExpected">0</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Saldo a cobrar</div>
+          <div class="card-value" id="statDue">0</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal acampante -->
+  <div class="modal-backdrop" id="camperModalBackdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="camperModalTitle">Agregar acampante</h2>
+        <button class="modal-close" data-close="camperModalBackdrop">&times;</button>
+      </div>
+      <form id="camperForm" class="modal-body">
+        <input type="hidden" id="camperId" />
+        <div class="form-row">
+          <label>Apellido
+            <input type="text" id="lastName" required />
+          </label>
+          <label>Nombre
+            <input type="text" id="firstName" required />
+          </label>
+        </div>
+        <div class="form-row">
+          <label>DNI
+            <input type="text" id="dni" />
+          </label>
+          <label>Fecha de nacimiento
+            <input type="date" id="birthDate" />
+          </label>
+        </div>
+        <div class="form-row">
+          <label>Celular
+            <input type="tel" id="phone" />
+          </label>
+          <label>Mail
+            <input type="email" id="email" />
+          </label>
+        </div>
+        <label>Iglesia
+          <input type="text" id="church" />
+        </label>
+        <div class="modal-footer">
+          <button type="button" class="btn" data-close="camperModalBackdrop">Cancelar</button>
+          <button type="submit" class="btn primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal pagos por acampante / detalle -->
+  <div class="modal-backdrop" id="paymentsModalBackdrop">
+    <div class="modal wide">
+      <div class="modal-header">
+        <h2 id="paymentsModalTitle">Pagos</h2>
+        <button class="modal-close" data-close="paymentsModalBackdrop">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="balance-box" id="balanceBox"></div>
+        <form id="paymentFormInline" class="payment-form">
+          <input type="hidden" id="payCamperId" />
+          <div class="form-row">
+            <label>Monto
+              <input type="number" id="payAmount" min="0" step="0.01" required />
+            </label>
+            <label>Modo
+              <select id="payMode">
+                <option value="Transferencia">Transferencia</option>
+                <option value="Efectivo">Efectivo</option>
+                <option value="Mercado Pago">Mercado Pago</option>
+                <option value="Tarjeta">Tarjeta</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </label>
+            <label>Fecha
+              <input type="date" id="payDate" />
+            </label>
+            <label>Nota
+              <input type="text" id="payNote" />
+            </label>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn primary">Agregar pago</button>
+          </div>
+        </form>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Modo</th>
+                <th>Monto</th>
+                <th>Nota</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="camperPaymentsTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal pago global -->
+  <div class="modal-backdrop" id="globalPaymentModalBackdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Agregar pago</h2>
+        <button class="modal-close" data-close="globalPaymentModalBackdrop">&times;</button>
+      </div>
+      <form id="globalPaymentForm" class="modal-body">
+        <label>Acampante
+          <select id="gpCamper" required></select>
+        </label>
+        <div class="form-row">
+          <label>Monto
+            <input type="number" id="gpAmount" min="0" step="0.01" required />
+          </label>
+          <label>Modo
+            <select id="gpMode">
+              <option value="Transferencia">Transferencia</option>
+              <option value="Efectivo">Efectivo</option>
+              <option value="Mercado Pago">Mercado Pago</option>
+              <option value="Tarjeta">Tarjeta</option>
+              <option value="Otro">Otro</option>
+            </select>
+          </label>
+        </div>
+        <div class="form-row">
+          <label>Fecha
+            <input type="date" id="gpDate" />
+          </label>
+          <label>Nota
+            <input type="text" id="gpNote" />
+          </label>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn" data-close="globalPaymentModalBackdrop">Cancelar</button>
+          <button type="submit" class="btn primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script>
+    // activar tabs
+  </script>
+</body>
+</html>

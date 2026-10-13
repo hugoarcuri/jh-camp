@@ -31,7 +31,7 @@ body{margin:0;font-family:"Inter",system-ui,-apple-system,Segoe UI,Roboto,Arial,
 .topbar{background:linear-gradient(90deg,var(--primary-dark),var(--primary));color:#fff;padding:12px 20px;}
 .topbar-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
 .brand{display:flex;align-items:center;gap:12px;}
-.brand-logo{height:46px;width:auto;border-radius:8px;background:#fff;padding:2px;}
+.brand-logo{height:60px;width:auto;border-radius:12px;background:#fff;padding:4px;box-shadow:0 4px 12px rgba(0,0,0,.25);}
 .brand-text{display:flex;flex-direction:column;}
 .logo{font-size:22px;font-weight:800;letter-spacing:-0.02em;}
 .subtitle{font-size:13px;color:rgba(255,255,255,.85);}
@@ -92,7 +92,7 @@ input[type=search]{min-width:260px;}
 
 /* --- Mejoras visuales --- */
 body { background: linear-gradient(180deg,var(--bg) 0%,var(--surface) 100%); }
-.topbar { background: linear-gradient(90deg,#0f172a 0%,#1e3a8a 100%); box-shadow: 0 4px 12px rgba(15,23,42,.25); }
+.topbar { background: linear-gradient(90deg,var(--primary-dark) 0%,var(--primary) 100%); box-shadow: 0 4px 12px rgba(15,23,42,.25); }
 .tab { transition: color .15s, border-color .15s; }
 .tab:hover { color: var(--primary); }
 .tab-panel h1 { color: #0f172a; }

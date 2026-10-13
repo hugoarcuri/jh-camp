@@ -36,9 +36,9 @@ body{margin:0;font-family:"Inter",system-ui,-apple-system,Segoe UI,Roboto,Arial,
 .logo{font-size:22px;font-weight:800;letter-spacing:-0.02em;}
 .subtitle{font-size:13px;color:rgba(255,255,255,.85);}
 .topbar-right{display:flex;align-items:center;gap:12px;}
-.price-badge{background:#1e293b;padding:8px 14px;border-radius:10px;text-align:right;}
-.price-label{display:block;font-size:11px;color:#cbd5e1;text-transform:uppercase;}
-.price-value{font-size:18px;font-weight:700;color:#facc15;}
+.price-badge{background:linear-gradient(90deg,var(--primary-dark),var(--primary));padding:8px 14px;border-radius:10px;text-align:right;border:1px solid rgba(255,255,255,.2);}
+.price-label{display:block;font-size:11px;color:rgba(255,255,255,.85);text-transform:uppercase;}
+.price-value{font-size:18px;font-weight:800;color:#fff;}
 .container{max-width:1200px;margin:0 auto;padding:20px;}
 .config-warning{background:#fef3c7;color:#92400e;padding:12px 20px;border-bottom:1px solid #fcd34d;}
 .config-warning.hidden{display:none;}

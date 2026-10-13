@@ -29,6 +29,12 @@
     return age >= 0 ? age : "-";
   }
   function todayISO() { return new Date().toISOString().slice(0, 10); }
+  function formatDate(iso) {
+    if (!iso) return "-";
+    const p = String(iso).split("-");
+    if (p.length !== 3) return iso;
+    return p[2].padStart(2,"0") + "/" + p[1].padStart(2,"0") + "/" + p[0];
+  }
   function toast(msg, kind) {
     const t = document.getElementById("toast");
     t.textContent = msg;
@@ -112,7 +118,7 @@
     // price badge
     state.currentPrice = currentPrice();
     document.getElementById("priceValue").textContent = money(state.currentPrice) +
-      " (campamento " + cfg.CAMP_DATE + ")";
+      " (hasta " + formatDate(cfg.CAMP_DATE) + ")";
 
     // button handlers
     document.getElementById("btnAddCamper").addEventListener("click", () => openCamperModal());
@@ -279,7 +285,7 @@
     list.forEach(p => {
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td>${escapeHtml(p.payment_date || "-")}</td>
+        <td>${formatDate(p.payment_date)}</td>
         <td>${escapeHtml(p.payment_mode || "-")}</td>
         <td><span class="amount">${money(p.amount)}</span></td>
         <td>${escapeHtml(p.note || "")}</td>
@@ -348,7 +354,7 @@
       const c = state.campers.find(x => x.id === p.camper_id);
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td>${escapeHtml(p.payment_date || "-")}</td>
+        <td>${formatDate(p.payment_date)}</td>
         <td>${escapeHtml(c ? nameOf(c) : "(eliminado)")}</td>
         <td>${escapeHtml(p.payment_mode || "-")}</td>
         <td><span class="amount">${money(p.amount)}</span></td>

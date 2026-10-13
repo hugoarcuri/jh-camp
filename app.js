@@ -93,6 +93,22 @@
       document.getElementById("configWarning").classList.remove("hidden");
     }
 
+    // tema claro/oscuro
+    const themeToggle = document.getElementById("themeToggle");
+    function applyTheme(theme) {
+      document.documentElement.setAttribute("data-theme", theme);
+      try { localStorage.setItem("jh-theme", theme); } catch(e){}
+      themeToggle.textContent = theme === "dark" ? "☀️" : "🌙";
+    }
+    let initialTheme = "light";
+    try { initialTheme = localStorage.getItem("jh-theme") || initialTheme; } catch(e){}
+    if (!initialTheme && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) initialTheme = "dark";
+    applyTheme(initialTheme);
+    themeToggle.addEventListener("click", () => {
+      const cur = document.documentElement.getAttribute("data-theme");
+      applyTheme(cur === "dark" ? "light" : "dark");
+    });
+
     // price badge
     state.currentPrice = currentPrice();
     document.getElementById("priceValue").textContent = money(state.currentPrice) +
@@ -156,9 +172,9 @@
         <td>${money(paid)}</td>
         <td class="${due > 0 ? "due" : "ok"}">${isSettled(paid) ? '<span class="saldado">Saldado</span>' : money(due)}</td>
         <td class="actions">
-          <button class="btn small" data-action="edit" data-id="${c.id}">Editar</button>
-          <button class="btn small" data-action="payments" data-id="${c.id}">Pagos</button>
-          <button class="btn small danger" data-action="delete" data-id="${c.id}">Eliminar</button>
+          <button class="btn small icon-action" data-action="edit" data-id="${c.id}" title="Editar" aria-label="Editar">✏️</button>
+          <button class="btn small icon-action" data-action="payments" data-id="${c.id}" title="Pagos" aria-label="Pagos">💳</button>
+          <button class="btn small danger icon-action" data-action="delete" data-id="${c.id}" title="Eliminar" aria-label="Eliminar">🗑️</button>
         </td>`;
       tbody.appendChild(tr);
     });
@@ -267,7 +283,7 @@
         <td>${escapeHtml(p.payment_mode || "-")}</td>
         <td>${money(p.amount)}</td>
         <td>${escapeHtml(p.note || "")}</td>
-        <td><button class="btn small danger" data-del="${p.id}">Eliminar</button></td>`;
+        <td><button class="btn small danger icon-action" data-del="${p.id}" title="Eliminar" aria-label="Eliminar">🗑️</button></td>`;
       tbody.appendChild(tr);
       tr.querySelector("button").addEventListener("click", () => deletePayment(p.id, camperId));
     });
@@ -337,7 +353,7 @@
         <td>${escapeHtml(p.payment_mode || "-")}</td>
         <td>${money(p.amount)}</td>
         <td>${escapeHtml(p.note || "")}</td>
-        <td><button class="btn small danger" data-del="${p.id}">Eliminar</button></td>`;
+        <td><button class="btn small danger icon-action" data-del="${p.id}" title="Eliminar" aria-label="Eliminar">🗑️</button></td>`;
       tbody.appendChild(tr);
       tr.querySelector("button").addEventListener("click", () => deletePayment(p.id));
     });

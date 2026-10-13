@@ -4,6 +4,12 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Campamento Cristiano - Gestión</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    (function(){ try { var t = localStorage.getItem('jh-theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch(e){} })();
+  </script>
   <link rel="stylesheet" href="styles.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js" defer></script>
@@ -13,12 +19,18 @@
   <header class="topbar">
     <div class="topbar-inner">
       <div class="brand">
-        <span class="logo">Campamento</span>
-        <span class="subtitle">Gestión de acampantes y pagos</span>
+        <img class="brand-logo" src="logo%20jh.jpg" alt="Logo" />
+        <div class="brand-text">
+          <span class="logo">Campamento JH</span>
+          <span class="subtitle">Gestión de acampantes y pagos</span>
+        </div>
       </div>
-      <div class="price-badge" id="priceBadge">
-        <span class="price-label">Precio vigente</span>
-        <span class="price-value" id="priceValue">-</span>
+      <div class="topbar-right">
+        <div class="price-badge" id="priceBadge">
+          <span class="price-label">Precio vigente</span>
+          <span class="price-value" id="priceValue">-</span>
+        </div>
+        <button id="themeToggle" class="btn icon-btn" type="button" title="Cambiar tema" aria-label="Cambiar tema">🌙</button>
       </div>
     </div>
   </header>

@@ -141,11 +141,12 @@
     });
     const tbody = document.getElementById("campersTbody");
     tbody.innerHTML = "";
-    state.filtered.forEach(c => {
+    state.filtered.forEach((c, idx) => {
       const paid = paidFor(c.id);
       const due = saldoFor(paid);
       const tr = document.createElement("tr");
       tr.innerHTML = `
+        <td class="row-num">${idx + 1}</td>
         <td><strong>${escapeHtml(nameOf(c))}</strong></td>
         <td>${escapeHtml(c.dni || "-")}</td>
         <td>${ageAt(c.birth_date, cfg.CAMP_DATE)}</td>
@@ -153,7 +154,7 @@
         <td>${escapeHtml(c.email || "-")}</td>
         <td>${escapeHtml(c.church || "-")}</td>
         <td>${money(paid)}</td>
-        <td class="${due > 0 ? "due" : "ok"}">${isSettled(paid) ? "Saldado" : money(due)}</td>
+        <td class="${due > 0 ? "due" : "ok"}">${isSettled(paid) ? '<span class="saldado">Saldado</span>' : money(due)}</td>
         <td class="actions">
           <button class="btn small" data-action="edit" data-id="${c.id}">Editar</button>
           <button class="btn small" data-action="payments" data-id="${c.id}">Pagos</button>

@@ -10,10 +10,10 @@
   <script>
     (function(){ try { var t = localStorage.getItem('jh-theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch(e){} })();
   </script>
-  <link rel="stylesheet" href="styles.css?v=7" />
+  <link rel="stylesheet" href="styles.css?v=8" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=7" defer></script>
-  <script src="app.js?v=7" defer></script>
+  <script src="config.js?v=8" defer></script>
+  <script src="app.js?v=8" defer></script>
 </head>
 <body>
   <header class="topbar">
@@ -52,6 +52,7 @@
         <div class="panel-actions">
           <input type="search" id="searchInput" placeholder="Buscar por nombre, DNI, iglesia..." />
           <button id="btnAddCamper" class="btn primary">+ Agregar acampante</button>
+          <button id="btnExportCampers" class="btn">⬇ PDF</button>
         </div>
       </div>
       <div class="table-wrap">
@@ -80,6 +81,7 @@
       <div class="panel-header">
         <h1>Pagos</h1>
         <button id="btnAddPayment" class="btn primary">+ Agregar pago</button>
+        <button id="btnExportPayments" class="btn">⬇ PDF</button>
       </div>
       <div class="table-wrap">
         <table class="data-table" id="paymentsTable">

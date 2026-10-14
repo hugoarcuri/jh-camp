@@ -125,6 +125,8 @@
     document.getElementById("camperForm").addEventListener("submit", onSaveCamper);
     document.getElementById("paymentFormInline").addEventListener("submit", onSaveInlinePayment);
     document.getElementById("btnAddPayment").addEventListener("click", () => openGlobalPaymentModal());
+    document.getElementById("btnExportCampers").addEventListener("click", exportCampersPDF);
+    document.getElementById("btnExportPayments").addEventListener("click", exportPaymentsPDF);
     document.getElementById("globalPaymentForm").addEventListener("submit", onSaveGlobalPayment);
     document.getElementById("searchInput").addEventListener("input", renderCampers);
 
@@ -386,6 +388,88 @@
   }
 
   // ---------- dashboard ----------
+  // ---------- exportar PDF ----------
+  function printStyles() {
+    return `
+      body { font-family: "Inter", system-ui, Arial, sans-serif; margin: 24px; color: #1f1214; }
+      h1 { color: #cc0000; margin-bottom: 4px; }
+      p { color: #6b555a; font-size: 12px; margin: 0 0 16px; }
+      table { width: 100%; border-collapse: collapse; font-size: 12px; }
+      th, td { border: 1px solid #e5e7eb; padding: 6px 8px; text-align: left; }
+      th { background: #cc0000; color: #fff; }
+      tr:nth-child(even) { background: #fff5f5; }
+      .saldado { color: #15803d; font-weight: 700; }
+      .amount { font-weight: 600; }
+      @media print { body { margin: 12px; } }
+    `;
+  }
+  function openPrintWindow(title, bodyHtml) {
+    const win = window.open("", "_blank");
+    if (!win) { toast("Habilitá ventanas emergentes para exportar PDF", "danger"); return; }
+    win.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>${printStyles()}</style></head><body>${bodyHtml}</body></html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 600);
+  }
+  function exportCampersPDF() {
+    const rows = (state.filtered && state.filtered.length) ? state.filtered : state.campers;
+    const trs = rows.map((c, idx) => {
+      const paid = paidFor(c.id);
+      const due = saldoFor(paid);
+      const saldoCell = isSettled(paid) ? '<span class="saldado">Saldado</span>' : money(due);
+      return `<tr>
+        <td>${idx + 1}</td>
+        <td>${escapeHtml(nameOf(c))}</td>
+        <td>${escapeHtml(c.dni || "-")}</td>
+        <td>${ageAt(c.birth_date, cfg.CAMP_DATE)}</td>
+        <td>${escapeHtml(c.phone || "-")}</td>
+        <td>${escapeHtml(c.email || "-")}</td>
+        <td>${escapeHtml(c.church || "-")}</td>
+        <td class="amount">${money(paid)}</td>
+        <td>${saldoCell}</td>
+      </tr>`;
+    }).join("");
+    const totalPaid = rows.reduce((s, c) => s + paidFor(c.id), 0);
+    const body = `
+      <h1>Acampantes</h1>
+      <p>Generado el ${formatDate(todayISO())} · Total: ${rows.length} acampantes</p>
+      <table>
+        <thead><tr>
+          <th>#</th><th>Apellido y Nombre</th><th>DNI</th><th>Edad</th><th>Celular</th><th>Mail</th><th>Iglesia</th><th>Pagado</th><th>Saldo</th>
+        </tr></thead>
+        <tbody>${trs}</tbody>
+      </table>
+      <p style="margin-top:12px;"><strong>Total recaudado:</strong> ${money(totalPaid)}</p>
+    `;
+    openPrintWindow("Acampantes - PDF", body);
+  }
+  function exportPaymentsPDF() {
+    const list = [...state.payments].sort((a, b) => (b.payment_date || "").localeCompare(a.payment_date || ""));
+    const trs = list.map(p => {
+      const c = state.campers.find(x => x.id === p.camper_id);
+      return `<tr>
+        <td>${formatDate(p.payment_date)}</td>
+        <td>${escapeHtml(c ? nameOf(c) : "(eliminado)")}</td>
+        <td>${escapeHtml(p.payment_mode || "-")}</td>
+        <td class="amount">${money(p.amount)}</td>
+        <td>${escapeHtml(p.note || "")}</td>
+      </tr>`;
+    }).join("");
+    const total = list.reduce((s, p) => s + Number(p.amount || 0), 0);
+    const body = `
+      <h1>Pagos</h1>
+      <p>Generado el ${formatDate(todayISO())} · Total: ${list.length} pagos</p>
+      <table>
+        <thead><tr>
+          <th>Fecha</th><th>Acampante</th><th>Modo</th><th>Monto</th><th>Nota</th>
+        </tr></thead>
+        <tbody>${trs}</tbody>
+      </table>
+      <p style="margin-top:12px;"><strong>Total recaudado:</strong> ${money(total)}</p>
+    `;
+    openPrintWindow("Pagos - PDF", body);
+  }
+
   function renderDashboard() {
     const totalPaid = state.payments.reduce((s,p)=>s+Number(p.amount||0),0);
     const expected = state.campers.reduce((s,c)=>s+requiredPrice(paidFor(c.id)),0);

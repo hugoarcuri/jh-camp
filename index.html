@@ -10,10 +10,10 @@
   <script>
     (function(){ try { var t = localStorage.getItem('jh-theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch(e){} })();
   </script>
-  <link rel="stylesheet" href="styles.css?v=8" />
+  <link rel="stylesheet" href="styles.css?v=9" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=8" defer></script>
-  <script src="app.js?v=8" defer></script>
+  <script src="config.js?v=9" defer></script>
+  <script src="app.js?v=9" defer></script>
 </head>
 <body>
   <header class="topbar">
@@ -80,10 +80,14 @@
     <section id="tab-payments" class="tab-panel">
       <div class="panel-header">
         <h1>Pagos</h1>
-        <button id="btnAddPayment" class="btn primary">+ Agregar pago</button>
-        <button id="btnExportPayments" class="btn">⬇ PDF</button>
+        <div class="panel-actions">
+          <button id="btnTogglePayView" class="btn">👤 Por persona</button>
+          <button id="btnExportPayments" class="btn">⬇ PDF</button>
+          <button id="btnAddPayment" class="btn primary">+ Agregar pago</button>
+        </div>
       </div>
-      <div class="table-wrap">
+      <div id="paymentsGrouped" class="payments-grouped hidden"></div>
+      <div class="table-wrap" id="paymentsTableWrap">
         <table class="data-table" id="paymentsTable">
           <thead>
             <tr>
@@ -93,6 +97,23 @@
               <th>Monto</th>
               <th>Nota</th>
               <th>Acciones</th>
+            </tr>
+            <tr class="filter-row">
+              <th><input type="text" id="fPayDate" class="col-filter" placeholder="DD/MM o texto" /></th>
+              <th><input type="text" id="fPayCamper" class="col-filter" placeholder="Nombre..." /></th>
+              <th>
+                <select id="fPayMode" class="col-filter">
+                  <option value="">Todos</option>
+                  <option value="Transferencia">Transferencia</option>
+                  <option value="Efectivo">Efectivo</option>
+                  <option value="Mercado Pago">Mercado Pago</option>
+                  <option value="Tarjeta">Tarjeta</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </th>
+              <th><input type="text" id="fPayAmount" class="col-filter" placeholder="Monto..." /></th>
+              <th><input type="text" id="fPayNote" class="col-filter" placeholder="Nota..." /></th>
+              <th></th>
             </tr>
           </thead>
           <tbody id="paymentsTbody"></tbody>

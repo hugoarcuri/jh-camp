@@ -12,6 +12,7 @@
     payments: [],
     filtered: [],
     currentPrice: null,
+    payView: "list",
   };
 
   // ---------- helpers ----------
@@ -127,6 +128,28 @@
     document.getElementById("btnAddPayment").addEventListener("click", () => openGlobalPaymentModal());
     document.getElementById("btnExportCampers").addEventListener("click", exportCampersPDF);
     document.getElementById("btnExportPayments").addEventListener("click", exportPaymentsPDF);
+    const toggleBtn = document.getElementById("btnTogglePayView");
+    function applyPayViewLabel() {
+      toggleBtn.textContent = state.payView === "grouped" ? "📋 Lista" : "👤 Por persona";
+    }
+    applyPayViewLabel();
+    toggleBtn.addEventListener("click", () => {
+      state.payView = state.payView === "grouped" ? "list" : "grouped";
+      applyPayViewLabel();
+      renderPayments();
+    });
+    document.getElementById("paymentsGrouped").addEventListener("click", (e) => {
+      const add = e.target.closest && e.target.closest("[data-addpay]");
+      const del = e.target.closest && e.target.closest("[data-del]");
+      if (add) openGlobalPaymentModal(add.dataset.addpay);
+      if (del) deletePayment(del.dataset.del);
+    });
+    ["fPayDate","fPayCamper","fPayMode","fPayAmount","fPayNote"].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener("input", renderPayments);
+      el.addEventListener("change", renderPayments);
+    });
     document.getElementById("globalPaymentForm").addEventListener("submit", onSaveGlobalPayment);
     document.getElementById("searchInput").addEventListener("input", renderCampers);
 
@@ -349,31 +372,101 @@
     toast("Pago agregado");
   }
 
+  function filteredPayments() {
+    const dateQ = (document.getElementById("fPayDate")?.value || "").toLowerCase().trim();
+    const camperQ = (document.getElementById("fPayCamper")?.value || "").toLowerCase().trim();
+    const modeQ = (document.getElementById("fPayMode")?.value || "").trim();
+    const amountQ = (document.getElementById("fPayAmount")?.value || "").toLowerCase().trim();
+    const noteQ = (document.getElementById("fPayNote")?.value || "").toLowerCase().trim();
+    return state.payments.filter(p => {
+      const c = state.campers.find(x => x.id === p.camper_id);
+      const name = c ? nameOf(c) : "(eliminado)";
+      if (dateQ && !formatDate(p.payment_date).toLowerCase().includes(dateQ) && !(p.payment_date || "").toLowerCase().includes(dateQ)) return false;
+      if (camperQ && !name.toLowerCase().includes(camperQ)) return false;
+      if (modeQ && (p.payment_mode || "") !== modeQ) return false;
+      if (amountQ && !String(p.amount).includes(amountQ) && !money(p.amount).toLowerCase().includes(amountQ)) return false;
+      if (noteQ && !(p.note || "").toLowerCase().includes(noteQ)) return false;
+      return true;
+    });
+  }
+  function renderGroupedPayments(list) {
+    const box = document.getElementById("paymentsGrouped");
+    box.innerHTML = "";
+    if (!list.length) { box.classList.add("hidden"); return; }
+    box.classList.remove("hidden");
+    const byCamper = new Map();
+    list.forEach(p => {
+      if (!byCamper.has(p.camper_id)) byCamper.set(p.camper_id, []);
+      byCamper.get(p.camper_id).push(p);
+    });
+    [...byCamper.entries()].sort((a,b) => {
+      const ca = state.campers.find(x=>x.id===a[0]); const cb = state.campers.find(x=>x.id===b[0]);
+      return nameOf(ca||{}).localeCompare(nameOf(cb||{}));
+    }).forEach(([camperId, pays]) => {
+      const c = state.campers.find(x=>x.id===camperId);
+      const total = pays.reduce((s,p)=>s+Number(p.amount||0),0);
+      const card = document.createElement("div");
+      card.className = "person-card";
+      const prows = pays.sort((a,b)=>(b.payment_date||"").localeCompare(a.payment_date||"")).map(p => `
+        <tr>
+          <td>${formatDate(p.payment_date)}</td>
+          <td>${escapeHtml(p.payment_mode || "-")}</td>
+          <td><span class="amount">${money(p.amount)}</span></td>
+          <td>${escapeHtml(p.note || "")}</td>
+          <td class="actions">
+            <button class="btn small icon-action" data-addpay="${p.camper_id}" title="Otro pago" aria-label="Otro pago">➕</button>
+            <button class="btn small danger icon-action" data-del="${p.id}" title="Eliminar" aria-label="Eliminar">🗑️</button>
+          </td>
+        </tr>`).join("");
+      card.innerHTML = `
+        <div class="person-header">
+          <strong>${escapeHtml(c ? nameOf(c) : "(eliminado)")}</strong>
+          <span class="person-total">${money(total)}</span>
+        </div>
+        <table class="mini-table">
+          <thead><tr><th>Fecha</th><th>Modo</th><th>Monto</th><th>Nota</th><th></th></tr></thead>
+          <tbody>${prows}</tbody>
+        </table>`;
+      box.appendChild(card);
+    });
+  }
   function renderPayments() {
     const tbody = document.getElementById("paymentsTbody");
+    const tableWrap = document.getElementById("paymentsTableWrap");
     tbody.innerHTML = "";
-    const list = [...state.payments].sort((a,b)=>(b.payment_date||"").localeCompare(a.payment_date||""));
-    list.forEach(p => {
-      const c = state.campers.find(x => x.id === p.camper_id);
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${formatDate(p.payment_date)}</td>
-        <td>${escapeHtml(c ? nameOf(c) : "(eliminado)")}</td>
-        <td>${escapeHtml(p.payment_mode || "-")}</td>
-        <td><span class="amount">${money(p.amount)}</span></td>
-        <td>${escapeHtml(p.note || "")}</td>
-         <td class="actions">
-           <button class="btn small icon-action" data-addpay="${p.camper_id}" title="Otro pago" aria-label="Otro pago">➕</button>
-           <button class="btn small danger icon-action" data-del="${p.id}" title="Eliminar" aria-label="Eliminar">🗑️</button>
-         </td>`;
-
-       tbody.appendChild(tr);
-       const addBtn = tr.querySelector("[data-addpay]");
-       if (addBtn && p.camper_id) addBtn.addEventListener("click", () => openGlobalPaymentModal(p.camper_id));
-       const delBtn = tr.querySelector("[data-del]");
-       if (delBtn) delBtn.addEventListener("click", () => deletePayment(p.id));
-    });
-    document.getElementById("paymentsEmpty").classList.toggle("show", list.length === 0);
+    const list = filteredPayments().sort((a,b)=>(b.payment_date||"").localeCompare(a.payment_date||""));
+    const box = document.getElementById("paymentsGrouped");
+    if (state.payView === "grouped") {
+      tableWrap.classList.add("hidden");
+      renderGroupedPayments(list);
+    } else {
+      tableWrap.classList.remove("hidden");
+      box.classList.add("hidden");
+    }
+    if (state.payView !== "grouped") {
+      list.forEach(p => {
+        const c = state.campers.find(x => x.id === p.camper_id);
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${formatDate(p.payment_date)}</td>
+          <td>${escapeHtml(c ? nameOf(c) : "(eliminado)")}</td>
+          <td>${escapeHtml(p.payment_mode || "-")}</td>
+          <td><span class="amount">${money(p.amount)}</span></td>
+          <td>${escapeHtml(p.note || "")}</td>
+          <td class="actions">
+            <button class="btn small icon-action" data-addpay="${p.camper_id}" title="Otro pago" aria-label="Otro pago">➕</button>
+            <button class="btn small danger icon-action" data-del="${p.id}" title="Eliminar" aria-label="Eliminar">🗑️</button>
+          </td>`;
+        tbody.appendChild(tr);
+        const addBtn = tr.querySelector("[data-addpay]");
+        if (addBtn && p.camper_id) addBtn.addEventListener("click", () => openGlobalPaymentModal(p.camper_id));
+        const delBtn = tr.querySelector("[data-del]");
+        if (delBtn) delBtn.addEventListener("click", () => deletePayment(p.id));
+      });
+    }
+    const emptyEl = document.getElementById("paymentsEmpty");
+    if (state.payments.length === 0) { emptyEl.textContent = "No hay pagos registrados."; emptyEl.classList.add("show"); }
+    else { emptyEl.textContent = "Sin resultados para los filtros."; emptyEl.classList.toggle("show", list.length === 0); }
   }
 
   async function deletePayment(id, camperId) {
@@ -444,7 +537,7 @@
     openPrintWindow("Acampantes - PDF", body);
   }
   function exportPaymentsPDF() {
-    const list = [...state.payments].sort((a, b) => (b.payment_date || "").localeCompare(a.payment_date || ""));
+    const list = filteredPayments().sort((a, b) => (b.payment_date || "").localeCompare(a.payment_date || ""));
     const trs = list.map(p => {
       const c = state.campers.find(x => x.id === p.camper_id);
       return `<tr>

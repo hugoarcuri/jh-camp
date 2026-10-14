@@ -140,3 +140,18 @@ body { background: linear-gradient(180deg,var(--bg) 0%,var(--surface) 100%); }
   .data-table th,.data-table td{padding:8px 6px;}
 }
 
+
+.filter-row th { padding: 4px; background: var(--surface); }
+.col-filter { width: 100%; padding: 4px 6px; font-size: 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--card); color: var(--text); }
+
+
+.payments-grouped{margin-top:12px;display:grid;gap:14px;}
+.payments-grouped.hidden{display:none;}
+.person-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.person-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;color:var(--text);}
+.person-total{font-weight:800;color:var(--primary);}
+.mini-table{width:100%;border-collapse:collapse;font-size:13px;}
+.mini-table th,.mini-table td{border:1px solid var(--border);padding:5px 8px;}
+.mini-table th{background:var(--primary);color:#fff;}
+.hidden{display:none !important;}
+

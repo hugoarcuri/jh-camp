@@ -15,6 +15,8 @@
     payView: "list",
     hasCategory: true,
     hasCustomPrice: true,
+    colFilters: {},
+    sort: { key: null, dir: "" },
   };
 
   // ---------- helpers ----------
@@ -186,21 +188,28 @@
       renderPayments();
     });
     document.getElementById("globalPaymentForm").addEventListener("submit", onSaveGlobalPayment);
-    document.getElementById("searchInput").addEventListener("input", renderCampers);
-    ["fCamperName","fCamperCategory","fCamperDni","fCamperAge","fCamperPhone","fCamperEmail","fCamperChurch","fCamperPrice","fCamperPaid","fCamperDue"].forEach(id => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      el.addEventListener("input", renderCampers);
-      el.addEventListener("change", renderCampers);
-    });
-    document.getElementById("btnClearCamperFilters").addEventListener("click", () => {
-      document.getElementById("searchInput").value = "";
-      ["fCamperName","fCamperCategory","fCamperDni","fCamperAge","fCamperPhone","fCamperEmail","fCamperChurch","fCamperPrice","fCamperPaid","fCamperDue"].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = "";
+    const gfField = document.getElementById("generalFilterField");
+    const gfValue = document.getElementById("generalFilterValue");
+    if (gfValue) {
+      gfValue.addEventListener("input", renderCampers);
+      gfValue.addEventListener("search", renderCampers);
+    }
+    if (gfField) gfField.addEventListener("change", renderCampers);
+    document.querySelectorAll(".col-filter-btn").forEach(btn => {
+      btn.addEventListener("click", e => {
+        e.stopPropagation();
+        openColMenu(btn.dataset.col, btn);
       });
-      renderCampers();
     });
+    document.getElementById("btnClearCamperFilters").addEventListener("click", clearAllCampersFilters);
+    document.addEventListener("click", e => {
+      if (!colMenu || !colMenu.classList.contains("show")) return;
+      if (e.target.closest && (e.target.closest(".col-filter-menu") || e.target.closest(".col-filter-btn"))) return;
+      closeColMenu();
+    });
+    window.addEventListener("scroll", closeColMenu, true);
+    window.addEventListener("resize", closeColMenu);
+    document.addEventListener("keydown", e => { if (e.key === "Escape") closeColMenu(); });
     init();
   });
 
@@ -254,50 +263,282 @@
   function digitsOnly(v) {
     return String(v == null ? "" : v).replace(/\D+/g, "");
   }
-  function fieldValue(id) {
-    const el = document.getElementById(id);
-    return el ? el.value : "";
+  function parseNumberLoose(raw) {
+    if (raw === null || raw === undefined) return NaN;
+    let s = String(raw).replace(/[\s%$]/g, "");
+    if (!s) return NaN;
+    if (s.includes(",")) s = s.replace(/\./g, "").replace(",", ".");
+    else if (/^-?\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, "");
+    return Number(s);
   }
-  function numberFilter(id) {
-    const raw = fieldValue(id).trim();
-    if (raw === "") return null;
-    const n = Number(raw.replace(",", "."));
-    return isFinite(n) ? n : null;
+  function camperCategory(c) { return c.category || "Acampante"; }
+  function camperAge(c) {
+    const a = ageAt(c.birth_date, cfg.CAMP_DATE);
+    return a === "-" ? null : Number(a);
   }
-  function filteredCampers() {
-    const q = normText(fieldValue("searchInput"));
-    const qTokens = q.split(/\s+/).filter(Boolean);
-    const nameQ = normText(fieldValue("fCamperName"));
-    const nameTokens = nameQ.split(/\s+/).filter(Boolean);
-    const catQ = fieldValue("fCamperCategory").trim();
-    const dniQ = digitsOnly(fieldValue("fCamperDni"));
-    const ageQ = numberFilter("fCamperAge");
-    const phoneQ = digitsOnly(fieldValue("fCamperPhone"));
-    const emailQ = normText(fieldValue("fCamperEmail"));
-    const churchQ = normText(fieldValue("fCamperChurch"));
-    const priceQ = numberFilter("fCamperPrice");
-    const paidQ = numberFilter("fCamperPaid");
-    const dueQ = numberFilter("fCamperDue");
 
-    return state.campers.filter(c => {
-      const cat = c.category || "Acampante";
-      const full = normText(nameOf(c));
-      const haystack = normText([c.last_name, c.first_name, c.dni, c.church, c.email, c.phone, cat].join(" "));
-      if (qTokens.length && !qTokens.every(t => haystack.includes(t))) return false;
-      if (catQ && cat !== catQ) return false;
-      if (nameTokens.length && !nameTokens.every(t => full.includes(t))) return false;
-      if (dniQ && !digitsOnly(c.dni).includes(dniQ)) return false;
-      if (ageQ !== null && ageAt(c.birth_date, cfg.CAMP_DATE) !== ageQ) return false;
-      if (phoneQ && !digitsOnly(c.phone).includes(phoneQ)) return false;
-      if (emailQ && !normText(c.email).includes(emailQ)) return false;
-      if (churchQ && !normText(c.church).includes(churchQ)) return false;
-      if (priceQ !== null && effectivePriceFor(c) < priceQ) return false;
-      if (paidQ !== null && paidFor(c.id) < paidQ) return false;
-      if (dueQ !== null && saldoForCamper(c) < dueQ) return false;
-      return true;
+  const CAMPER_COLUMNS = {
+    name: { label: "Apellido y Nombre", type: "text", value: c => nameOf(c) },
+    category: { label: "Categoría", type: "text", value: c => camperCategory(c) },
+    dni: { label: "DNI", type: "text", value: c => String(c.dni || "").trim() },
+    age: { label: "Edad", type: "number", value: c => camperAge(c) },
+    phone: { label: "Celular", type: "text", value: c => String(c.phone || "").trim() },
+    email: { label: "Mail", type: "text", value: c => String(c.email || "").trim() },
+    church: { label: "Iglesia", type: "text", value: c => String(c.church || "").trim() },
+    price: { label: "Valor final", type: "number", value: c => effectivePriceFor(c) },
+    paid: { label: "Pagado", type: "number", value: c => paidFor(c.id) },
+    due: { label: "Saldo", type: "number", value: c => saldoForCamper(c) },
+  };
+
+  function colValueKey(key, c) {
+    const col = CAMPER_COLUMNS[key];
+    if (!col) return "";
+    const v = col.value(c);
+    if (col.type === "number") return v === null || v === undefined || v === "" ? "" : String(v);
+    return normText(v);
+  }
+  function colDisplay(key, valueKey, rawValue) {
+    const col = CAMPER_COLUMNS[key];
+    if (valueKey === "") return "(vacío)";
+    if (col.type === "number") {
+      return key === "age" ? String(valueKey) : money(Number(valueKey));
+    }
+    const txt = String(rawValue == null ? "" : rawValue).trim();
+    return txt || "(vacío)";
+  }
+
+  function matchesColumnFilters(c, skipKey) {
+    for (const key of Object.keys(CAMPER_COLUMNS)) {
+      if (key === skipKey) continue;
+      const sel = state.colFilters[key];
+      if (!Array.isArray(sel)) continue;
+      if (!sel.includes(colValueKey(key, c))) return false;
+    }
+    return true;
+  }
+
+  function generalFilterState() {
+    const fieldEl = document.getElementById("generalFilterField");
+    const valueEl = document.getElementById("generalFilterValue");
+    return { field: fieldEl ? fieldEl.value : "", raw: valueEl ? valueEl.value.trim() : "" };
+  }
+
+  function matchesGeneralFilter(c) {
+    const { field, raw } = generalFilterState();
+    if (!raw) return true;
+    if (!field) {
+      const tokens = normText(raw).split(/\s+/).filter(Boolean);
+      const haystack = normText([
+        nameOf(c), camperCategory(c), c.dni, c.phone, c.email, c.church,
+        ageAt(c.birth_date, cfg.CAMP_DATE), effectivePriceFor(c), paidFor(c.id), saldoForCamper(c)
+      ].join(" "));
+      return tokens.every(t => haystack.includes(t));
+    }
+    const col = CAMPER_COLUMNS[field];
+    if (!col) return true;
+    const rawVal = col.value(c);
+    if (col.type === "number") {
+      if (rawVal === null || rawVal === undefined || rawVal === "") return false;
+      const m = raw.match(/^(>=|<=|>|<|=)?\s*(-?[\d.,]+)$/);
+      if (!m) return normText(rawVal).includes(normText(raw));
+      const target = parseNumberLoose(m[2]);
+      if (!isFinite(target)) return true;
+      const val = Number(rawVal);
+      const op = m[1] || "=";
+      if (op === ">") return val > target;
+      if (op === "<") return val < target;
+      if (op === ">=") return val >= target;
+      if (op === "<=") return val <= target;
+      return val === target;
+    }
+    return normText(rawVal).includes(normText(raw));
+  }
+
+  function sortCampers(list) {
+    const key = state.sort && state.sort.key;
+    const dir = state.sort && state.sort.dir;
+    if (!key || !dir || !CAMPER_COLUMNS[key]) return list;
+    const col = CAMPER_COLUMNS[key];
+    const mult = dir === "desc" ? -1 : 1;
+    return list.slice().sort((a, b) => {
+      const av = col.value(a);
+      const bv = col.value(b);
+      const aEmpty = av === null || av === undefined || av === "";
+      const bEmpty = bv === null || bv === undefined || bv === "";
+      if (aEmpty && bEmpty) return 0;
+      if (aEmpty) return 1;
+      if (bEmpty) return -1;
+      let cmp;
+      if (col.type === "number") cmp = Number(av) - Number(bv);
+      else cmp = String(av).localeCompare(String(bv), "es", { numeric: true, sensitivity: "base" });
+      return cmp * mult;
     });
   }
+
+  function filteredCampers() {
+    const list = state.campers.filter(c => matchesGeneralFilter(c) && matchesColumnFilters(c, null));
+    return sortCampers(list);
+  }
+
+  function columnValueEntries(key) {
+    const col = CAMPER_COLUMNS[key];
+    const map = new Map();
+    state.campers
+      .filter(c => matchesGeneralFilter(c) && matchesColumnFilters(c, key))
+      .forEach(c => {
+        const k = colValueKey(key, c);
+        if (!map.has(k)) map.set(k, col.type === "number" ? Number(k) : col.value(c));
+      });
+    const entries = [...map.entries()].map(([k, raw]) => ({
+      key: k,
+      display: colDisplay(key, k, raw),
+      empty: k === "",
+      sort: col.type === "number" ? (k === "" ? Infinity : Number(k)) : normText(k),
+    }));
+    entries.sort((a, b) => {
+      if (a.empty !== b.empty) return a.empty ? 1 : -1;
+      if (typeof a.sort === "number" && typeof b.sort === "number") return a.sort - b.sort;
+      return String(a.sort).localeCompare(String(b.sort), "es", { numeric: true, sensitivity: "base" });
+    });
+    return entries;
+  }
+
+  // ---------- menú de filtro estilo Excel ----------
+  let colMenu = null;
+  let colMenuCol = null;
+
+  function ensureColMenu() {
+    if (colMenu) return colMenu;
+    colMenu = document.createElement("div");
+    colMenu.className = "col-filter-menu";
+    colMenu.innerHTML = `
+      <div class="cfm-sort">
+        <button type="button" data-sort="asc">▲ Orden ascendente</button>
+        <button type="button" data-sort="desc">▼ Orden descendente</button>
+      </div>
+      <div class="cfm-search"><input type="search" data-cfm-search placeholder="Buscar valor..." /></div>
+      <div class="cfm-values" data-cfm-values></div>
+      <div class="cfm-footer">
+        <button type="button" class="btn small" data-cfm-clear>Limpiar</button>
+        <button type="button" class="btn small primary" data-cfm-apply>Aplicar</button>
+      </div>`;
+    document.body.appendChild(colMenu);
+    colMenu.addEventListener("click", e => e.stopPropagation());
+    colMenu.querySelector("[data-cfm-search]").addEventListener("input", filterMenuValues);
+    colMenu.querySelector("[data-cfm-apply]").addEventListener("click", applyColMenu);
+    colMenu.querySelector("[data-cfm-clear]").addEventListener("click", clearColMenu);
+    colMenu.querySelector("[data-cfm-values]").addEventListener("change", e => {
+      if (e.target.matches("[data-cfm-all]")) {
+        colMenu.querySelectorAll("[data-cfm-val]").forEach(cb => { cb.checked = e.target.checked; });
+      } else if (e.target.matches("[data-cfm-val]")) {
+        const boxes = [...colMenu.querySelectorAll("[data-cfm-val]")];
+        const allBox = colMenu.querySelector("[data-cfm-all]");
+        if (allBox) allBox.checked = boxes.length > 0 && boxes.every(b => b.checked);
+      }
+    });
+    colMenu.querySelectorAll("[data-sort]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const dir = btn.dataset.sort;
+        const same = state.sort && state.sort.key === colMenuCol && state.sort.dir === dir;
+        state.sort = same ? { key: null, dir: "" } : { key: colMenuCol, dir };
+        closeColMenu();
+        renderCampers();
+      });
+    });
+    return colMenu;
+  }
+
+  function openColMenu(key, btn) {
+    if (!CAMPER_COLUMNS[key]) return;
+    if (colMenu && colMenu.classList.contains("show") && colMenuCol === key) {
+      closeColMenu();
+      return;
+    }
+    ensureColMenu();
+    colMenuCol = key;
+    const selected = Array.isArray(state.colFilters[key]) ? new Set(state.colFilters[key]) : null;
+    const entries = columnValueEntries(key);
+    const valuesEl = colMenu.querySelector("[data-cfm-values]");
+    colMenu.querySelector("[data-cfm-search]").value = "";
+    const rows = entries.map(entry => `
+      <label class="cfm-item" data-text="${escapeHtml(normText(entry.display))}">
+        <input type="checkbox" data-cfm-val value="${escapeHtml(entry.key)}"${!selected || selected.has(entry.key) ? " checked" : ""} />
+        <span>${escapeHtml(entry.display)}</span>
+      </label>`).join("");
+    const allChecked = !selected || (entries.length > 0 && entries.every(e => selected.has(e.key)));
+    valuesEl.innerHTML = `
+      <label class="cfm-item cfm-all"><input type="checkbox" data-cfm-all${allChecked ? " checked" : ""} /> <strong>Seleccionar todo</strong></label>
+      ${rows || '<div class="cfm-empty">Sin valores</div>'}`;
+    colMenu.querySelectorAll("[data-sort]").forEach(b => {
+      b.classList.toggle("active", !!state.sort && state.sort.key === key && state.sort.dir === b.dataset.sort);
+    });
+    colMenu.classList.add("show");
+    const rect = btn.getBoundingClientRect();
+    const mw = Math.min(colMenu.offsetWidth || 270, window.innerWidth - 16);
+    let left = rect.left;
+    if (left + mw > window.innerWidth - 8) left = Math.max(8, window.innerWidth - mw - 8);
+    colMenu.style.left = left + "px";
+    const mh = colMenu.offsetHeight;
+    let top = rect.bottom + 4;
+    if (top + mh > window.innerHeight - 8 && rect.top - mh - 4 > 8) top = rect.top - mh - 4;
+    colMenu.style.top = Math.max(8, top) + "px";
+    colMenu.style.maxHeight = Math.min(420, window.innerHeight - 16) + "px";
+  }
+
+  function filterMenuValues() {
+    if (!colMenu) return;
+    const q = normText(colMenu.querySelector("[data-cfm-search]").value);
+    colMenu.querySelectorAll(".cfm-item[data-text]").forEach(el => {
+      el.style.display = !q || el.dataset.text.includes(q) ? "" : "none";
+    });
+  }
+
+  function applyColMenu() {
+    if (!colMenuCol) return;
+    const key = colMenuCol;
+    const boxes = [...colMenu.querySelectorAll("[data-cfm-val]")];
+    const checked = boxes.filter(b => b.checked).map(b => b.value);
+    if (boxes.length === 0 || checked.length === boxes.length) delete state.colFilters[key];
+    else state.colFilters[key] = checked;
+    closeColMenu();
+    renderCampers();
+  }
+
+  function clearColMenu() {
+    if (colMenuCol) delete state.colFilters[colMenuCol];
+    closeColMenu();
+    renderCampers();
+  }
+
+  function closeColMenu() {
+    if (colMenu) colMenu.classList.remove("show");
+    colMenuCol = null;
+  }
+
+  function clearAllCampersFilters() {
+    state.colFilters = {};
+    state.sort = { key: null, dir: "" };
+    const fieldEl = document.getElementById("generalFilterField");
+    const valueEl = document.getElementById("generalFilterValue");
+    if (fieldEl) fieldEl.value = "";
+    if (valueEl) valueEl.value = "";
+    renderCampers();
+  }
+
+  function updateColFilterButtons() {
+    document.querySelectorAll(".col-filter-btn").forEach(btn => {
+      const key = btn.dataset.col;
+      const filtered = Array.isArray(state.colFilters[key]);
+      const sorted = !!state.sort && state.sort.key === key && !!state.sort.dir;
+      btn.classList.toggle("active", filtered);
+      btn.classList.toggle("sorted", sorted);
+      btn.textContent = sorted ? (state.sort.dir === "asc" ? "▲" : "▼") : "▾";
+      btn.title = (filtered ? "Filtro activo" : "Filtrar") + " · " + (sorted ? "orden " + (state.sort.dir === "asc" ? "ascendente" : "descendente") : "sin orden");
+    });
+  }
+
   function renderCampers() {
+    updateColFilterButtons();
     state.filtered = filteredCampers();
     const tbody = document.getElementById("campersTbody");
     tbody.innerHTML = "";

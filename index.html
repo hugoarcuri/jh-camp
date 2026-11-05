@@ -10,10 +10,10 @@
   <script>
     (function(){ try { var t = localStorage.getItem('jh-theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch(e){} })();
   </script>
-  <link rel="stylesheet" href="styles.css?v=15" />
+  <link rel="stylesheet" href="styles.css?v=16" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=15" defer></script>
-  <script src="app.js?v=15" defer></script>
+  <script src="config.js?v=16" defer></script>
+  <script src="app.js?v=16" defer></script>
 </head>
 <body>
   <header class="topbar">
@@ -50,48 +50,47 @@
       <div class="panel-header">
         <h1>Acampantes</h1>
         <div class="panel-actions">
-          <input type="search" id="searchInput" placeholder="Buscar por nombre, DNI, iglesia..." />
-          <button id="btnClearCamperFilters" class="btn small" title="Limpiar filtros" aria-label="Limpiar filtros">🧹 Limpiar</button>
           <button id="btnAddCamper" class="btn primary">+ Agregar acampante</button>
           <button id="btnExportCampers" class="btn">⬇ PDF</button>
         </div>
+      </div>
+      <div class="general-filter">
+        <label class="gf-field">Filtrar por
+          <select id="generalFilterField">
+            <option value="">Todos los campos</option>
+            <option value="name">Apellido y Nombre</option>
+            <option value="category">Categoría</option>
+            <option value="dni">DNI</option>
+            <option value="age">Edad</option>
+            <option value="phone">Celular</option>
+            <option value="email">Mail</option>
+            <option value="church">Iglesia</option>
+            <option value="price">Valor final</option>
+            <option value="paid">Pagado</option>
+            <option value="due">Saldo</option>
+          </select>
+        </label>
+        <label class="gf-field gf-value">Criterio
+          <input type="search" id="generalFilterValue" placeholder="Escribí para filtrar..." />
+        </label>
+        <button type="button" id="btnClearCamperFilters" class="btn small gf-clear" title="Limpiar filtros" aria-label="Limpiar filtros">🧹 Limpiar</button>
       </div>
       <div class="table-wrap">
         <table class="data-table" id="campersTable">
           <thead>
             <tr>
               <th>#</th>
-              <th>Apellido y Nombre</th>
-              <th>Categoría</th>
-              <th>DNI</th>
-              <th>Edad</th>
-              <th>Celular</th>
-              <th>Mail</th>
-              <th>Iglesia</th>
-              <th>Valor final</th>
-              <th>Pagado</th>
-              <th>Saldo</th>
+              <th>Apellido y Nombre <button type="button" class="col-filter-btn" data-col="name" title="Filtrar y ordenar" aria-label="Filtrar y ordenar Apellido y Nombre">▾</button></th>
+              <th>Categoría <button type="button" class="col-filter-btn" data-col="category" title="Filtrar y ordenar" aria-label="Filtrar y ordenar Categoría">▾</button></th>
+              <th>DNI <button type="button" class="col-filter-btn" data-col="dni" title="Filtrar y ordenar" aria-label="Filtrar y ordenar DNI">▾</button></th>
+              <th>Edad <button type="button" class="col-filter-btn" data-col="age" title="Filtrar y ordenar" aria-label="Filtrar y ordenar Edad">▾</button></th>
+              <th>Celular <button type="button" class="col-filter-btn" data-col="phone" title="Filtrar y ordenar" aria-label="Filtrar y ordenar Celular">▾</button></th>
+              <th>Mail <button type="button" class="col-filter-btn" data-col="email" title="Filtrar y ordenar" aria-label="Filtrar y ordenar Mail">▾</button></th>
+              <th>Iglesia <button type="button" class="col-filter-btn" data-col="church" title="Filtrar y ordenar" aria-label="Filtrar y ordenar Iglesia">▾</button></th>
+              <th>Valor final <button type="button" class="col-filter-btn" data-col="price" title="Filtrar y ordenar" aria-label="Filtrar y ordenar Valor final">▾</button></th>
+              <th>Pagado <button type="button" class="col-filter-btn" data-col="paid" title="Filtrar y ordenar" aria-label="Filtrar y ordenar Pagado">▾</button></th>
+              <th>Saldo <button type="button" class="col-filter-btn" data-col="due" title="Filtrar y ordenar" aria-label="Filtrar y ordenar Saldo">▾</button></th>
               <th>Acciones</th>
-            </tr>
-            <tr class="filter-row">
-              <th></th>
-              <th><input type="search" id="fCamperName" class="col-filter" placeholder="Apellido o nombre..." /></th>
-              <th>
-                <select id="fCamperCategory" class="col-filter" aria-label="Filtrar por categoría">
-                  <option value="">Todas</option>
-                  <option value="Acampante">Acampante</option>
-                  <option value="Equipo">Equipo</option>
-                </select>
-              </th>
-              <th><input type="search" id="fCamperDni" class="col-filter" placeholder="DNI..." /></th>
-              <th><input type="number" id="fCamperAge" class="col-filter" min="0" placeholder="Edad" /></th>
-              <th><input type="search" id="fCamperPhone" class="col-filter" placeholder="Celular..." /></th>
-              <th><input type="search" id="fCamperEmail" class="col-filter" placeholder="Mail..." /></th>
-              <th><input type="search" id="fCamperChurch" class="col-filter" placeholder="Iglesia..." /></th>
-              <th><input type="number" id="fCamperPrice" class="col-filter" min="0" placeholder="Desde..." /></th>
-              <th><input type="number" id="fCamperPaid" class="col-filter" min="0" placeholder="Desde..." /></th>
-              <th><input type="number" id="fCamperDue" class="col-filter" min="0" placeholder="Desde..." /></th>
-              <th></th>
             </tr>
           </thead>
           <tbody id="campersTbody"></tbody>

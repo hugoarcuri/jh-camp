@@ -35,7 +35,7 @@ Podés subir la carpeta a Netlify, Vercel, GitHub Pages o cualquier hosting est�
 ## Funcionalidades
 
 - Acampantes: agregar, editar, eliminar. Datos: apellido y nombre, categoría (Acampante / Equipo), DNI, fecha de nacimiento (edad calculada al 18/01/2027), celular, mail, iglesia. La categoría se puede cambiar directo desde la tabla con un desplegable.
-- Filtros por campo en la tabla de acampantes: nombre, categoría, DNI, edad, celular, mail, iglesia, valor final, pagado y saldo. Los montos funcionan como “desde”. El botón 🧹 Limpiar borra todos los filtros y el PDF respeta lo filtrado.
+- Filtros estilo Excel en la tabla de acampantes: cada encabezado tiene una flechita con **orden ascendente/descendente** y **selección de valores** (con buscador). Arriba hay un **filtro general** donde se elige el campo (o “Todos los campos”) y se escribe el criterio; en los campos numéricos se puede usar `>`, `<`, `>=`, `<=` o `=` (por ejemplo `>250000`). El botón 🧹 Limpiar borra todos los filtros y el orden, y el PDF respeta lo filtrado y ordenado.
 - Valor final por acampante: se puede editar en la tabla (o en el modal) cuando sea necesario. Si se deja vacío, se usa el precio general por tramos. El botón ↺ vuelve al precio general.
 - Pagos: agregar por acampante o desde la sección pagos, con modo (transferencia, efectivo, etc.), fecha y nota. Muestra saldo pagado y saldo a cobrar.
 - Precios por tramos: hasta 30/09/2026 = $230.000; hasta 30/11/2026 = $270.000; hasta el campamento (18/01/2027) = $320.000. Si la persona ya pagó el tramo completo ($230.000 o más), queda saldada; si no terminó de pagar, el saldo se recalcula con el precio vigente cuando se pasa la fecha. El valor final personalizado reemplaza ese cálculo para esa persona.

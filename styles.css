@@ -144,7 +144,6 @@ body { background: linear-gradient(180deg,var(--bg) 0%,var(--surface) 100%); }
 
 @media (max-width:480px){
   .panel-actions{flex-direction:column;align-items:stretch;}
-  #searchInput{min-width:0;width:100%;}
   .brand-logo{height:44px;}
   .logo{font-size:18px;}
   .price-value{font-size:15px;}
@@ -154,11 +153,109 @@ body { background: linear-gradient(180deg,var(--bg) 0%,var(--surface) 100%); }
 }
 
 
-.filter-row th { padding: 4px; background: var(--surface); vertical-align: middle; }
-.col-filter { width: 100%; min-width: 0; padding: 6px 8px; font-size: 13px; border: 1px solid var(--border); border-radius: 6px; background: var(--card); color: var(--text); }
-.filter-row input[type="search"], .filter-row input[type="number"] { min-width: 0; }
+/* filtro general de acampantes */
+.general-filter {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+.gf-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+.gf-field select { min-width: 180px; }
+.gf-value { flex: 1 1 240px; }
+.gf-value input { min-width: 0; width: 100%; }
+.gf-clear { white-space: nowrap; }
+
+/* botones de filtro en los encabezados (estilo Excel) */
+.col-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-left: 4px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  vertical-align: middle;
+}
+.col-filter-btn:hover { background: rgba(15,23,42,.1); border-color: var(--border); }
+.col-filter-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+.col-filter-btn.sorted { color: var(--primary); font-weight: 700; }
+.col-filter-btn.active.sorted { color: #fff; }
+[data-theme="dark"] .col-filter-btn:hover { background: rgba(255,255,255,.14); }
+
+.col-filter-menu {
+  position: fixed;
+  z-index: 1000;
+  display: none;
+  flex-direction: column;
+  width: 270px;
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 16px 40px rgba(0,0,0,.25);
+  overflow: hidden;
+}
+.col-filter-menu.show { display: flex; }
+.cfm-sort { display: flex; flex-direction: column; border-bottom: 1px solid var(--border); }
+.cfm-sort button {
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.cfm-sort button:hover { background: var(--surface); }
+.cfm-sort button.active { color: var(--primary); font-weight: 700; }
+.cfm-search { padding: 8px; border-bottom: 1px solid var(--border); }
+.cfm-search input { width: 100%; min-width: 0; padding: 6px 8px; font-size: 13px; }
+.cfm-values { overflow-y: auto; max-height: 220px; padding: 6px 0; }
+.cfm-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  line-height: 1.3;
+}
+.cfm-item:hover { background: var(--surface); }
+.cfm-item input { width: auto; min-width: 0; margin: 0; }
+.cfm-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cfm-all { border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 4px; }
+.cfm-empty { padding: 10px 12px; color: var(--muted); font-size: 13px; }
+.cfm-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 8px;
+  border-top: 1px solid var(--border);
+}
+[data-theme="dark"] .col-filter-menu { background: #2b3139; }
+
+@media (max-width: 600px) {
+  .general-filter { flex-direction: column; align-items: stretch; }
+  .gf-field select { min-width: 0; width: 100%; }
+  .gf-clear { width: 100%; }
+}
 
 /* filtros de pagos (visibles en lista y en vista por persona) */
+.col-filter { width: 100%; min-width: 0; }
 .payments-filters {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr)) auto;

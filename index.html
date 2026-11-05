@@ -10,10 +10,10 @@
   <script>
     (function(){ try { var t = localStorage.getItem('jh-theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch(e){} })();
   </script>
-  <link rel="stylesheet" href="styles.css?v=12" />
+  <link rel="stylesheet" href="styles.css?v=15" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=12" defer></script>
-  <script src="app.js?v=12" defer></script>
+  <script src="config.js?v=15" defer></script>
+  <script src="app.js?v=15" defer></script>
 </head>
 <body>
   <header class="topbar">
@@ -51,19 +51,10 @@
         <h1>Acampantes</h1>
         <div class="panel-actions">
           <input type="search" id="searchInput" placeholder="Buscar por nombre, DNI, iglesia..." />
-          <select id="camperCategoryFilter" class="category-filter" title="Filtrar por categoría" aria-label="Filtrar por categoría">
-            <option value="">Todas las categorías</option>
-            <option value="Acampante">Acampantes</option>
-            <option value="Equipo">Equipo</option>
-          </select>
+          <button id="btnClearCamperFilters" class="btn small" title="Limpiar filtros" aria-label="Limpiar filtros">🧹 Limpiar</button>
           <button id="btnAddCamper" class="btn primary">+ Agregar acampante</button>
           <button id="btnExportCampers" class="btn">⬇ PDF</button>
         </div>
-      </div>
-      <div id="categoryWarning" class="inline-warning hidden">
-        <span>Para guardar la <strong>categoría</strong> y el <strong>valor final</strong> falta habilitarlos en Supabase.
-        Ejecutá la sección <strong>“Migración categoría y valor final”</strong> de <strong>schema.sql</strong> y recargá la página.</span>
-        <button type="button" id="btnCopyCategorySql" class="btn small">📋 Copiar SQL</button>
       </div>
       <div class="table-wrap">
         <table class="data-table" id="campersTable">
@@ -81,6 +72,26 @@
               <th>Pagado</th>
               <th>Saldo</th>
               <th>Acciones</th>
+            </tr>
+            <tr class="filter-row">
+              <th></th>
+              <th><input type="search" id="fCamperName" class="col-filter" placeholder="Apellido o nombre..." /></th>
+              <th>
+                <select id="fCamperCategory" class="col-filter" aria-label="Filtrar por categoría">
+                  <option value="">Todas</option>
+                  <option value="Acampante">Acampante</option>
+                  <option value="Equipo">Equipo</option>
+                </select>
+              </th>
+              <th><input type="search" id="fCamperDni" class="col-filter" placeholder="DNI..." /></th>
+              <th><input type="number" id="fCamperAge" class="col-filter" min="0" placeholder="Edad" /></th>
+              <th><input type="search" id="fCamperPhone" class="col-filter" placeholder="Celular..." /></th>
+              <th><input type="search" id="fCamperEmail" class="col-filter" placeholder="Mail..." /></th>
+              <th><input type="search" id="fCamperChurch" class="col-filter" placeholder="Iglesia..." /></th>
+              <th><input type="number" id="fCamperPrice" class="col-filter" min="0" placeholder="Desde..." /></th>
+              <th><input type="number" id="fCamperPaid" class="col-filter" min="0" placeholder="Desde..." /></th>
+              <th><input type="number" id="fCamperDue" class="col-filter" min="0" placeholder="Desde..." /></th>
+              <th></th>
             </tr>
           </thead>
           <tbody id="campersTbody"></tbody>

@@ -187,25 +187,20 @@
     });
     document.getElementById("globalPaymentForm").addEventListener("submit", onSaveGlobalPayment);
     document.getElementById("searchInput").addEventListener("input", renderCampers);
-    document.getElementById("camperCategoryFilter").addEventListener("change", renderCampers);
-    document.getElementById("btnCopyCategorySql").addEventListener("click", () => {
-      const sql = [
-        "alter table public.campers add column if not exists category text not null default 'Acampante';",
-        "alter table public.campers add column if not exists custom_price numeric(12,2);",
-        "alter table public.campers drop constraint if exists campers_category_check;",
-        "alter table public.campers add constraint campers_category_check check (category in ('Acampante', 'Equipo'));",
-        "alter table public.campers drop constraint if exists campers_custom_price_check;",
-        "alter table public.campers add constraint campers_custom_price_check check (custom_price is null or custom_price >= 0);"
-      ].join("\n");
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(sql)
-          .then(() => toast("SQL copiado. Pegalo en Supabase > SQL Editor"))
-          .catch(() => toast("No se pudo copiar. Abrí schema.sql y copiá la migración", "danger"));
-      } else {
-        toast("Abrí schema.sql y copiá la sección Migración categoría", "danger");
-      }
+    ["fCamperName","fCamperCategory","fCamperDni","fCamperAge","fCamperPhone","fCamperEmail","fCamperChurch","fCamperPrice","fCamperPaid","fCamperDue"].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener("input", renderCampers);
+      el.addEventListener("change", renderCampers);
     });
-
+    document.getElementById("btnClearCamperFilters").addEventListener("click", () => {
+      document.getElementById("searchInput").value = "";
+      ["fCamperName","fCamperCategory","fCamperDni","fCamperAge","fCamperPhone","fCamperEmail","fCamperChurch","fCamperPrice","fCamperPaid","fCamperDue"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = "";
+      });
+      renderCampers();
+    });
     init();
   });
 
@@ -215,10 +210,7 @@
     renderAll();
   }
 
-  function toggleExtrasWarning() {
-    const missing = state.hasCategory === false || state.hasCustomPrice === false;
-    const warning = document.getElementById("categoryWarning");
-    if (warning) warning.classList.toggle("hidden", !missing);
+  function applyExtrasAvailability() {
     const sel = document.getElementById("category");
     if (sel) sel.disabled = state.hasCategory === false;
     const priceInput = document.getElementById("customPrice");
@@ -239,7 +231,7 @@
       const priceProbe = await supabase.from("campers").select("custom_price").limit(1);
       state.hasCustomPrice = !priceProbe.error;
     }
-    toggleExtrasWarning();
+    applyExtrasAvailability();
   }
   async function loadPayments() {
     const { data, error } = await supabase.from("payments").select("*").order("payment_date", { ascending: false });
@@ -254,14 +246,55 @@
   }
 
   // ---------- campers ----------
+  function normText(v) {
+    return String(v == null ? "" : v)
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase().trim();
+  }
+  function digitsOnly(v) {
+    return String(v == null ? "" : v).replace(/\D+/g, "");
+  }
+  function fieldValue(id) {
+    const el = document.getElementById(id);
+    return el ? el.value : "";
+  }
+  function numberFilter(id) {
+    const raw = fieldValue(id).trim();
+    if (raw === "") return null;
+    const n = Number(raw.replace(",", "."));
+    return isFinite(n) ? n : null;
+  }
   function filteredCampers() {
-    const q = (document.getElementById("searchInput").value || "").toLowerCase().trim();
-    const cat = (document.getElementById("camperCategoryFilter")?.value || "").trim();
+    const q = normText(fieldValue("searchInput"));
+    const qTokens = q.split(/\s+/).filter(Boolean);
+    const nameQ = normText(fieldValue("fCamperName"));
+    const nameTokens = nameQ.split(/\s+/).filter(Boolean);
+    const catQ = fieldValue("fCamperCategory").trim();
+    const dniQ = digitsOnly(fieldValue("fCamperDni"));
+    const ageQ = numberFilter("fCamperAge");
+    const phoneQ = digitsOnly(fieldValue("fCamperPhone"));
+    const emailQ = normText(fieldValue("fCamperEmail"));
+    const churchQ = normText(fieldValue("fCamperChurch"));
+    const priceQ = numberFilter("fCamperPrice");
+    const paidQ = numberFilter("fCamperPaid");
+    const dueQ = numberFilter("fCamperDue");
+
     return state.campers.filter(c => {
-      if (cat && (c.category || "Acampante") !== cat) return false;
-      if (!q) return true;
-      return [c.last_name, c.first_name, c.dni, c.church, c.email, c.phone, c.category]
-        .some(v => (v || "").toLowerCase().includes(q));
+      const cat = c.category || "Acampante";
+      const full = normText(nameOf(c));
+      const haystack = normText([c.last_name, c.first_name, c.dni, c.church, c.email, c.phone, cat].join(" "));
+      if (qTokens.length && !qTokens.every(t => haystack.includes(t))) return false;
+      if (catQ && cat !== catQ) return false;
+      if (nameTokens.length && !nameTokens.every(t => full.includes(t))) return false;
+      if (dniQ && !digitsOnly(c.dni).includes(dniQ)) return false;
+      if (ageQ !== null && ageAt(c.birth_date, cfg.CAMP_DATE) !== ageQ) return false;
+      if (phoneQ && !digitsOnly(c.phone).includes(phoneQ)) return false;
+      if (emailQ && !normText(c.email).includes(emailQ)) return false;
+      if (churchQ && !normText(c.church).includes(churchQ)) return false;
+      if (priceQ !== null && effectivePriceFor(c) < priceQ) return false;
+      if (paidQ !== null && paidFor(c.id) < paidQ) return false;
+      if (dueQ !== null && saldoForCamper(c) < dueQ) return false;
+      return true;
     });
   }
   function renderCampers() {
@@ -328,7 +361,9 @@
       const resetBtn = tr.querySelector("[data-resetprice]");
       if (resetBtn) resetBtn.addEventListener("click", () => saveCustomPrice(c.id, ""));
     });
-    document.getElementById("campersEmpty").classList.toggle("show", state.filtered.length === 0);
+    const emptyEl = document.getElementById("campersEmpty");
+    emptyEl.textContent = state.campers.length === 0 ? "No hay acampantes cargados." : "Sin resultados para los filtros.";
+    emptyEl.classList.toggle("show", state.filtered.length === 0);
 
     // attach handlers via delegation (avoid rebind)
     tbody.querySelectorAll("button[data-action]").forEach(btn => {

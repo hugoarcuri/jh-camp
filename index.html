@@ -10,10 +10,10 @@
   <script>
     (function(){ try { var t = localStorage.getItem('jh-theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch(e){} })();
   </script>
-  <link rel="stylesheet" href="styles.css?v=11" />
+  <link rel="stylesheet" href="styles.css?v=12" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=11" defer></script>
-  <script src="app.js?v=11" defer></script>
+  <script src="config.js?v=12" defer></script>
+  <script src="app.js?v=12" defer></script>
 </head>
 <body>
   <header class="topbar">
@@ -61,8 +61,8 @@
         </div>
       </div>
       <div id="categoryWarning" class="inline-warning hidden">
-        <span>Para guardar la categoría <strong>Acampante / Equipo</strong> falta habilitarla en Supabase.
-        Ejecutá la sección <strong>“Migración categoría”</strong> de <strong>schema.sql</strong> y recargá la página.</span>
+        <span>Para guardar la <strong>categoría</strong> y el <strong>valor final</strong> falta habilitarlos en Supabase.
+        Ejecutá la sección <strong>“Migración categoría y valor final”</strong> de <strong>schema.sql</strong> y recargá la página.</span>
         <button type="button" id="btnCopyCategorySql" class="btn small">📋 Copiar SQL</button>
       </div>
       <div class="table-wrap">
@@ -77,6 +77,7 @@
               <th>Celular</th>
               <th>Mail</th>
               <th>Iglesia</th>
+              <th>Valor final</th>
               <th>Pagado</th>
               <th>Saldo</th>
               <th>Acciones</th>
@@ -153,7 +154,7 @@
           <div class="card-value" id="statPaid">0</div>
         </div>
         <div class="card">
-          <div class="card-label">Esperado (precio vigente)</div>
+          <div class="card-label">Esperado</div>
           <div class="card-value" id="statExpected">0</div>
         </div>
         <div class="card">
@@ -197,12 +198,17 @@
             <input type="email" id="email" />
           </label>
         </div>
-        <label>Categoría
-          <select id="category">
-            <option value="Acampante">Acampante</option>
-            <option value="Equipo">Equipo</option>
-          </select>
-        </label>
+        <div class="form-row">
+          <label>Categoría
+            <select id="category">
+              <option value="Acampante">Acampante</option>
+              <option value="Equipo">Equipo</option>
+            </select>
+          </label>
+          <label>Valor final del campamento
+            <input type="number" id="customPrice" min="0" step="any" inputmode="numeric" placeholder="Según precio vigente" />
+          </label>
+        </div>
         <label>Iglesia
           <input type="text" id="church" />
         </label>

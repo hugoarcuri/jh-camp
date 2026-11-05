@@ -34,12 +34,13 @@ Podés subir la carpeta a Netlify, Vercel, GitHub Pages o cualquier hosting est�
 
 ## Funcionalidades
 
-- Acampantes: agregar, editar, eliminar. Datos: apellido y nombre, categoría (Acampante / Equipo), DNI, fecha de nacimiento (edad calculada al 18/01/2027), celular, mail, iglesia. Se puede filtrar por categoría y el PDF respeta el filtro.
+- Acampantes: agregar, editar, eliminar. Datos: apellido y nombre, categoría (Acampante / Equipo), DNI, fecha de nacimiento (edad calculada al 18/01/2027), celular, mail, iglesia. La categoría se puede cambiar directo desde la tabla con un desplegable; se puede filtrar por categoría y el PDF respeta el filtro.
+- Valor final por acampante: se puede editar en la tabla (o en el modal) cuando sea necesario. Si se deja vacío, se usa el precio general por tramos. El botón ↺ vuelve al precio general.
 - Pagos: agregar por acampante o desde la sección pagos, con modo (transferencia, efectivo, etc.), fecha y nota. Muestra saldo pagado y saldo a cobrar.
-- Precios por tramos: hasta 30/09/2026 = $230.000; hasta 30/11/2026 = $270.000; hasta el campamento (18/01/2027) = $320.000. Si la persona ya pagó el tramo completo ($230.000 o más), queda saldada; si no terminó de pagar, el saldo se recalcula con el precio vigente cuando se pasa la fecha.
+- Precios por tramos: hasta 30/09/2026 = $230.000; hasta 30/11/2026 = $270.000; hasta el campamento (18/01/2027) = $320.000. Si la persona ya pagó el tramo completo ($230.000 o más), queda saldada; si no terminó de pagar, el saldo se recalcula con el precio vigente cuando se pasa la fecha. El valor final personalizado reemplaza ese cálculo para esa persona.
 - Resumen con totales.
 
-## 5. Migración: categoría Acampante / Equipo
+## 5. Migración: categoría y valor final
 
 Si la tabla `campers` ya existía, ejecutá esta sección en **Supabase -> SQL Editor** (también está al final de `schema.sql`):
 
@@ -47,12 +48,19 @@ Si la tabla `campers` ya existía, ejecutá esta sección en **Supabase -> SQL E
 alter table public.campers
   add column if not exists category text not null default 'Acampante';
 
+alter table public.campers
+  add column if not exists custom_price numeric(12,2);
+
 alter table public.campers drop constraint if exists campers_category_check;
 alter table public.campers
   add constraint campers_category_check check (category in ('Acampante', 'Equipo'));
+
+alter table public.campers drop constraint if exists campers_custom_price_check;
+alter table public.campers
+  add constraint campers_custom_price_check check (custom_price is null or custom_price >= 0);
 ```
 
-Después recargá la app. Mientras la columna no exista, la app avisa y guarda los acampantes sin categoría.
+Después recargá la app. Mientras falten las columnas, la app avisa y guarda los acampantes sin categoría ni valor personalizado.
 
 ## Notas de seguridad
 

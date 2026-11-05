@@ -14,6 +14,7 @@
     currentPrice: null,
     payView: "list",
     hasCategory: true,
+    hasCustomPrice: true,
   };
 
   // ---------- helpers ----------
@@ -73,14 +74,28 @@
     }
     return locked;
   }
-  function isSettled(paid) { return paid >= (cfg.FIRST_TIER_PRICE || 0); }
   function requiredPrice(paid) {
     const lp = lockedPrice(paid);
     return lp !== null ? lp : currentPrice();
   }
-  function saldoFor(paid) {
-    if (isSettled(paid)) return 0;
-    return Math.max(0, currentPrice() - paid);
+  function customPriceOf(c) {
+    if (!c) return null;
+    const v = c.custom_price;
+    if (v === null || v === undefined || v === "") return null;
+    const n = Number(v);
+    return isFinite(n) ? n : null;
+  }
+  function effectivePriceFor(c) {
+    const cp = customPriceOf(c);
+    if (cp !== null) return cp;
+    return requiredPrice(paidFor(c && c.id));
+  }
+  function settledFor(c) {
+    return paidFor(c && c.id) >= effectivePriceFor(c);
+  }
+  function saldoForCamper(c) {
+    const paid = paidFor(c && c.id);
+    return Math.max(0, effectivePriceFor(c) - paid);
   }
   function paymentsFor(camperId) { return state.payments.filter(p => p.camper_id === camperId); }
   function paidFor(camperId) { return paymentsFor(camperId).reduce((s, p) => s + Number(p.amount || 0), 0); }
@@ -176,8 +191,11 @@
     document.getElementById("btnCopyCategorySql").addEventListener("click", () => {
       const sql = [
         "alter table public.campers add column if not exists category text not null default 'Acampante';",
+        "alter table public.campers add column if not exists custom_price numeric(12,2);",
         "alter table public.campers drop constraint if exists campers_category_check;",
-        "alter table public.campers add constraint campers_category_check check (category in ('Acampante', 'Equipo'));"
+        "alter table public.campers add constraint campers_category_check check (category in ('Acampante', 'Equipo'));",
+        "alter table public.campers drop constraint if exists campers_custom_price_check;",
+        "alter table public.campers add constraint campers_custom_price_check check (custom_price is null or custom_price >= 0);"
       ].join("\n");
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(sql)
@@ -197,11 +215,14 @@
     renderAll();
   }
 
-  function toggleCategoryWarning() {
+  function toggleExtrasWarning() {
+    const missing = state.hasCategory === false || state.hasCustomPrice === false;
     const warning = document.getElementById("categoryWarning");
-    if (warning) warning.classList.toggle("hidden", state.hasCategory !== false);
+    if (warning) warning.classList.toggle("hidden", !missing);
     const sel = document.getElementById("category");
     if (sel) sel.disabled = state.hasCategory === false;
+    const priceInput = document.getElementById("customPrice");
+    if (priceInput) priceInput.disabled = state.hasCustomPrice === false;
   }
 
   async function loadCampers() {
@@ -209,12 +230,16 @@
     if (error) { toast("Error cargando acampantes: " + error.message, "danger"); return; }
     state.campers = data || [];
     if (state.campers.length > 0) {
-      state.hasCategory = Object.prototype.hasOwnProperty.call(state.campers[0], "category");
+      const keys = Object.keys(state.campers[0]);
+      state.hasCategory = keys.includes("category");
+      state.hasCustomPrice = keys.includes("custom_price");
     } else {
-      const probe = await supabase.from("campers").select("category").limit(1);
-      state.hasCategory = !probe.error;
+      const catProbe = await supabase.from("campers").select("category").limit(1);
+      state.hasCategory = !catProbe.error;
+      const priceProbe = await supabase.from("campers").select("custom_price").limit(1);
+      state.hasCustomPrice = !priceProbe.error;
     }
-    toggleCategoryWarning();
+    toggleExtrasWarning();
   }
   async function loadPayments() {
     const { data, error } = await supabase.from("payments").select("*").order("payment_date", { ascending: false });
@@ -245,11 +270,32 @@
     tbody.innerHTML = "";
     state.filtered.forEach((c, idx) => {
       const paid = paidFor(c.id);
-      const due = saldoFor(paid);
+      const price = effectivePriceFor(c);
+      const due = saldoForCamper(c);
+      const settled = settledFor(c);
       const cat = c.category || (state.hasCategory ? "Acampante" : "");
-      const catCell = cat
-        ? `<span class="cat-badge ${cat === "Equipo" ? "cat-team" : "cat-camper"}">${escapeHtml(cat)}</span>`
-        : '<span class="muted">—</span>';
+      let catCell;
+      if (state.hasCategory) {
+        catCell = `<select class="cat-select" data-cat="${c.id}" aria-label="Categoría de ${escapeHtml(nameOf(c))}">
+          <option value="Acampante"${cat === "Equipo" ? "" : " selected"}>Acampante</option>
+          <option value="Equipo"${cat === "Equipo" ? " selected" : ""}>Equipo</option>
+        </select>`;
+      } else {
+        catCell = cat
+          ? `<span class="cat-badge ${cat === "Equipo" ? "cat-team" : "cat-camper"}">${escapeHtml(cat)}</span>`
+          : '<span class="muted">—</span>';
+      }
+      let priceCell;
+      if (state.hasCustomPrice) {
+        const cp = customPriceOf(c);
+        priceCell = `<span class="price-edit">
+          <input type="number" class="price-input" data-price="${c.id}" min="0" step="any" inputmode="numeric"
+            value="${price}" title="Valor final del campamento" aria-label="Valor final de ${escapeHtml(nameOf(c))}" />
+          ${cp !== null ? `<button type="button" class="btn small icon-action" data-resetprice="${c.id}" title="Usar precio general" aria-label="Usar precio general">↺</button>` : ""}
+        </span>`;
+      } else {
+        priceCell = `<span class="amount">${money(price)}</span>`;
+      }
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td class="row-num">${idx + 1}</td>
@@ -260,14 +306,27 @@
         <td>${escapeHtml(c.phone || "-")}</td>
         <td>${escapeHtml(c.email || "-")}</td>
         <td>${escapeHtml(c.church || "-")}</td>
+        <td class="price-cell">${priceCell}</td>
         <td><span class="amount">${money(paid)}</span></td>
-        <td class="${due > 0 ? "due" : "ok"}">${isSettled(paid) ? '<span class="saldado">Saldado</span>' : '<span class="amount">' + money(due) + '</span>'}</td>
+        <td class="${due > 0 ? "due" : "ok"}">${settled ? '<span class="saldado">Saldado</span>' : '<span class="amount">' + money(due) + '</span>'}</td>
         <td class="actions">
           <button class="btn small icon-action" data-action="edit" data-id="${c.id}" title="Editar" aria-label="Editar">✏️</button>
           <button class="btn small icon-action" data-action="payments" data-id="${c.id}" title="Pagos" aria-label="Pagos">💳</button>
           <button class="btn small danger icon-action" data-action="delete" data-id="${c.id}" title="Eliminar" aria-label="Eliminar">🗑️</button>
         </td>`;
       tbody.appendChild(tr);
+
+      const catSel = tr.querySelector("[data-cat]");
+      if (catSel) catSel.addEventListener("change", () => saveCategory(c.id, catSel.value));
+      const priceInput = tr.querySelector("[data-price]");
+      if (priceInput) {
+        priceInput.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") { e.preventDefault(); priceInput.blur(); }
+        });
+        priceInput.addEventListener("change", () => saveCustomPrice(c.id, priceInput.value));
+      }
+      const resetBtn = tr.querySelector("[data-resetprice]");
+      if (resetBtn) resetBtn.addEventListener("click", () => saveCustomPrice(c.id, ""));
     });
     document.getElementById("campersEmpty").classList.toggle("show", state.filtered.length === 0);
 
@@ -281,6 +340,37 @@
         if (action === "delete") deleteCamper(id);
       });
     });
+  }
+
+  async function saveCategory(id, value) {
+    if (!supabase) { toast("Configurá Supabase primero", "danger"); return; }
+    const { error } = await supabase.from("campers").update({ category: value }).eq("id", id);
+    if (error) { toast("Error guardando categoría: " + error.message, "danger"); renderCampers(); return; }
+    const c = state.campers.find(x => x.id === id);
+    if (c) c.category = value;
+    renderCampers();
+    renderDashboard();
+    toast("Categoría actualizada");
+  }
+
+  async function saveCustomPrice(id, raw) {
+    if (!supabase) { toast("Configurá Supabase primero", "danger"); return; }
+    const trimmed = String(raw == null ? "" : raw).trim();
+    let value = null;
+    if (trimmed !== "") {
+      value = Number(trimmed.replace(",", "."));
+      if (!isFinite(value) || value < 0) {
+        toast("Valor final inválido", "danger");
+        renderCampers();
+        return;
+      }
+    }
+    const { error } = await supabase.from("campers").update({ custom_price: value }).eq("id", id);
+    if (error) { toast("Error guardando valor final: " + error.message, "danger"); renderCampers(); return; }
+    const c = state.campers.find(x => x.id === id);
+    if (c) c.custom_price = value;
+    renderAll();
+    toast(value === null ? "Valor final restablecido al precio general" : "Valor final actualizado");
   }
 
   function escapeHtml(s) {
@@ -303,6 +393,7 @@
       document.getElementById("email").value = c.email || "";
       document.getElementById("church").value = c.church || "";
       document.getElementById("category").value = c.category || "Acampante";
+      document.getElementById("customPrice").value = c.custom_price != null ? c.custom_price : "";
     } else {
       title.textContent = "Agregar acampante";
     }
@@ -322,6 +413,19 @@
       church: document.getElementById("church").value.trim() || null,
     };
     if (state.hasCategory) payload.category = document.getElementById("category").value;
+    if (state.hasCustomPrice) {
+      const rawPrice = document.getElementById("customPrice").value.trim();
+      if (rawPrice === "") {
+        payload.custom_price = null;
+      } else {
+        const priceValue = Number(rawPrice.replace(",", "."));
+        if (!isFinite(priceValue) || priceValue < 0) {
+          toast("Valor final inválido", "danger");
+          return;
+        }
+        payload.custom_price = priceValue;
+      }
+    }
     if (!supabase) { toast("Configurá Supabase primero", "danger"); return; }
     let res;
     if (id) {
@@ -334,10 +438,10 @@
     await loadPayments();
     renderAll();
     closeModal("camperModalBackdrop");
-    if (state.hasCategory) {
+    if (state.hasCategory !== false && state.hasCustomPrice !== false) {
       toast(id ? "Acampante actualizado" : "Acampante agregado");
     } else {
-      toast("Guardado, pero falta habilitar la categoría en Supabase (ver schema.sql)", "danger");
+      toast("Guardado, pero faltan habilitar campos en Supabase (ver schema.sql)", "danger");
     }
   }
 
@@ -365,12 +469,14 @@
   function renderCamperPayments(camperId) {
     const list = paymentsFor(camperId).sort((a,b) => (b.payment_date||"").localeCompare(a.payment_date||""));
     const paid = list.reduce((s,p)=>s+Number(p.amount||0),0);
-    const due = saldoFor(paid);
-    const rp = requiredPrice(paid);
+    const c = state.campers.find(x => x.id === camperId);
+    const rp = effectivePriceFor(c);
+    const due = Math.max(0, rp - paid);
+    const custom = customPriceOf(c) !== null;
     document.getElementById("balanceBox").innerHTML = `
-      <div><div class="bb-label">Precio aplicable</div><div class="bb-value">${money(rp)}</div></div>
+      <div><div class="bb-label">Precio aplicable${custom ? " (personalizado)" : ""}</div><div class="bb-value">${money(rp)}</div></div>
       <div><div class="bb-label">Pagado</div><div class="bb-value">${money(paid)}</div></div>
-      <div><div class="bb-label">Saldo</div><div class="bb-value">${money(Math.max(0,due))}${due<0?" (a favor)":""}</div></div>`;
+      <div><div class="bb-label">Saldo</div><div class="bb-value">${money(due)}</div></div>`;
     const tbody = document.getElementById("camperPaymentsTbody");
     tbody.innerHTML = "";
     list.forEach(p => {
@@ -574,8 +680,9 @@
     const rows = filteredCampers();
     const trs = rows.map((c, idx) => {
       const paid = paidFor(c.id);
-      const due = saldoFor(paid);
-      const saldoCell = isSettled(paid) ? '<span class="saldado">Saldado</span>' : money(due);
+      const price = effectivePriceFor(c);
+      const due = saldoForCamper(c);
+      const saldoCell = settledFor(c) ? '<span class="saldado">Saldado</span>' : money(due);
       const cat = c.category || (state.hasCategory ? "Acampante" : "-");
       return `<tr>
         <td>${idx + 1}</td>
@@ -586,6 +693,7 @@
         <td>${escapeHtml(c.phone || "-")}</td>
         <td>${escapeHtml(c.email || "-")}</td>
         <td>${escapeHtml(c.church || "-")}</td>
+        <td class="amount">${money(price)}</td>
         <td class="amount">${money(paid)}</td>
         <td>${saldoCell}</td>
       </tr>`;
@@ -596,7 +704,7 @@
       <p>Generado el ${formatDate(todayISO())} · Total: ${rows.length} acampantes</p>
       <table>
         <thead><tr>
-          <th>#</th><th>Apellido y Nombre</th><th>Categoría</th><th>DNI</th><th>Edad</th><th>Celular</th><th>Mail</th><th>Iglesia</th><th>Pagado</th><th>Saldo</th>
+          <th>#</th><th>Apellido y Nombre</th><th>Categoría</th><th>DNI</th><th>Edad</th><th>Celular</th><th>Mail</th><th>Iglesia</th><th>Valor final</th><th>Pagado</th><th>Saldo</th>
         </tr></thead>
         <tbody>${trs}</tbody>
       </table>
@@ -633,8 +741,8 @@
 
   function renderDashboard() {
     const totalPaid = state.payments.reduce((s,p)=>s+Number(p.amount||0),0);
-    const expected = state.campers.reduce((s,c)=>s+requiredPrice(paidFor(c.id)),0);
-    const totalDue = state.campers.reduce((s,c)=>s+saldoFor(paidFor(c.id)),0);
+    const expected = state.campers.reduce((s,c)=>s+effectivePriceFor(c),0);
+    const totalDue = state.campers.reduce((s,c)=>s+saldoForCamper(c),0);
     document.getElementById("statCampers").textContent = state.campers.length;
     document.getElementById("statPaid").textContent = money(totalPaid);
     document.getElementById("statExpected").textContent = money(expected);

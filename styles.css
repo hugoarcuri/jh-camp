@@ -187,6 +187,10 @@ body { background: linear-gradient(180deg,var(--bg) 0%,var(--surface) 100%); }
 /* categoría acampante / equipo */
 .category-filter{width:auto;min-width:160px;}
 .cat-badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700;line-height:1.5;}
+.cat-select{width:auto;min-width:130px;padding:4px 8px;font-size:13px;}
+.price-cell{min-width:160px;}
+.price-edit{display:flex;align-items:center;gap:4px;}
+.price-input{width:110px;padding:5px 7px;font-size:14px;font-weight:600;text-align:right;}
 .cat-camper{background:#e0f2fe;color:#075985;}
 .cat-team{background:#fef3c7;color:#92400e;}
 .inline-warning{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:13px;line-height:1.45;}
@@ -194,5 +198,5 @@ body { background: linear-gradient(180deg,var(--bg) 0%,var(--surface) 100%); }
 [data-theme="dark"] .cat-camper{background:#0c4a6e;color:#bae6fd;}
 [data-theme="dark"] .cat-team{background:#78350f;color:#fde68a;}
 [data-theme="dark"] .inline-warning{background:#3b2f13;color:#fde68a;border-color:#6b5a1f;}
-@media (max-width:480px){.category-filter{width:100%;min-width:0;}}
+@media (max-width:480px){.category-filter{width:100%;min-width:0;}.price-input{width:100px;}}
 

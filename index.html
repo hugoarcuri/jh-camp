@@ -10,10 +10,10 @@
   <script>
     (function(){ try { var t = localStorage.getItem('jh-theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch(e){} })();
   </script>
-  <link rel="stylesheet" href="styles.css?v=9" />
+  <link rel="stylesheet" href="styles.css?v=11" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=9" defer></script>
-  <script src="app.js?v=9" defer></script>
+  <script src="config.js?v=11" defer></script>
+  <script src="app.js?v=11" defer></script>
 </head>
 <body>
   <header class="topbar">
@@ -51,9 +51,19 @@
         <h1>Acampantes</h1>
         <div class="panel-actions">
           <input type="search" id="searchInput" placeholder="Buscar por nombre, DNI, iglesia..." />
+          <select id="camperCategoryFilter" class="category-filter" title="Filtrar por categoría" aria-label="Filtrar por categoría">
+            <option value="">Todas las categorías</option>
+            <option value="Acampante">Acampantes</option>
+            <option value="Equipo">Equipo</option>
+          </select>
           <button id="btnAddCamper" class="btn primary">+ Agregar acampante</button>
           <button id="btnExportCampers" class="btn">⬇ PDF</button>
         </div>
+      </div>
+      <div id="categoryWarning" class="inline-warning hidden">
+        <span>Para guardar la categoría <strong>Acampante / Equipo</strong> falta habilitarla en Supabase.
+        Ejecutá la sección <strong>“Migración categoría”</strong> de <strong>schema.sql</strong> y recargá la página.</span>
+        <button type="button" id="btnCopyCategorySql" class="btn small">📋 Copiar SQL</button>
       </div>
       <div class="table-wrap">
         <table class="data-table" id="campersTable">
@@ -61,6 +71,7 @@
             <tr>
               <th>#</th>
               <th>Apellido y Nombre</th>
+              <th>Categoría</th>
               <th>DNI</th>
               <th>Edad</th>
               <th>Celular</th>
@@ -86,6 +97,31 @@
           <button id="btnAddPayment" class="btn primary">+ Agregar pago</button>
         </div>
       </div>
+      <div class="payments-filters" id="paymentsFilters">
+        <label class="pf-field">Fecha
+          <input type="text" id="fPayDate" class="col-filter" placeholder="DD/MM o texto" />
+        </label>
+        <label class="pf-field">Acampante
+          <input type="text" id="fPayCamper" class="col-filter" placeholder="Nombre..." />
+        </label>
+        <label class="pf-field">Modo
+          <select id="fPayMode" class="col-filter">
+            <option value="">Todos</option>
+            <option value="Transferencia">Transferencia</option>
+            <option value="Efectivo">Efectivo</option>
+            <option value="Mercado Pago">Mercado Pago</option>
+            <option value="Tarjeta">Tarjeta</option>
+            <option value="Otro">Otro</option>
+          </select>
+        </label>
+        <label class="pf-field">Monto
+          <input type="text" id="fPayAmount" class="col-filter" placeholder="Monto..." />
+        </label>
+        <label class="pf-field">Nota
+          <input type="text" id="fPayNote" class="col-filter" placeholder="Nota..." />
+        </label>
+        <button type="button" id="btnClearPayFilters" class="btn small pf-clear" title="Limpiar filtros" aria-label="Limpiar filtros">🧹 Limpiar</button>
+      </div>
       <div id="paymentsGrouped" class="payments-grouped hidden"></div>
       <div class="table-wrap" id="paymentsTableWrap">
         <table class="data-table" id="paymentsTable">
@@ -97,23 +133,6 @@
               <th>Monto</th>
               <th>Nota</th>
               <th>Acciones</th>
-            </tr>
-            <tr class="filter-row">
-              <th><input type="text" id="fPayDate" class="col-filter" placeholder="DD/MM o texto" /></th>
-              <th><input type="text" id="fPayCamper" class="col-filter" placeholder="Nombre..." /></th>
-              <th>
-                <select id="fPayMode" class="col-filter">
-                  <option value="">Todos</option>
-                  <option value="Transferencia">Transferencia</option>
-                  <option value="Efectivo">Efectivo</option>
-                  <option value="Mercado Pago">Mercado Pago</option>
-                  <option value="Tarjeta">Tarjeta</option>
-                  <option value="Otro">Otro</option>
-                </select>
-              </th>
-              <th><input type="text" id="fPayAmount" class="col-filter" placeholder="Monto..." /></th>
-              <th><input type="text" id="fPayNote" class="col-filter" placeholder="Nota..." /></th>
-              <th></th>
             </tr>
           </thead>
           <tbody id="paymentsTbody"></tbody>
@@ -178,6 +197,12 @@
             <input type="email" id="email" />
           </label>
         </div>
+        <label>Categoría
+          <select id="category">
+            <option value="Acampante">Acampante</option>
+            <option value="Equipo">Equipo</option>
+          </select>
+        </label>
         <label>Iglesia
           <input type="text" id="church" />
         </label>

@@ -95,8 +95,8 @@ body { background: linear-gradient(180deg,var(--bg) 0%,var(--surface) 100%); }
 .topbar { background: linear-gradient(90deg,var(--primary-dark) 0%,var(--primary) 100%); box-shadow: 0 4px 12px rgba(15,23,42,.25); }
 .tab { transition: color .15s, border-color .15s; }
 .tab:hover { color: var(--primary); }
-.tab-panel h1 { color: #0f172a; }
-.btn.primary { box-shadow: 0 2px 6px rgba(37,99,235,.35); }
+.tab-panel h1 { color: var(--text); }
+.btn.primary { box-shadow: 0 2px 6px rgba(204,0,0,.28); }
 .btn.primary:hover { transform: translateY(-1px); }
 .table-wrap { box-shadow: 0 2px 8px rgba(0,0,0,.05); }
 .data-table th { background: linear-gradient(180deg,#f8fafc,#e2e8f0); color:#0f172a; }
@@ -118,6 +118,12 @@ body { background: linear-gradient(180deg,var(--bg) 0%,var(--surface) 100%); }
 [data-theme="dark"] .modal { background:var(--card); }
 [data-theme="dark"] .balance-box { background:var(--surface); }
 [data-theme="dark"] .topbar-right .btn.icon-btn { background:rgba(255,255,255,.12); }
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea { background:#222831; color:var(--text); border-color:var(--border); }
+[data-theme="dark"] .btn { background:var(--card); color:var(--text); }
+[data-theme="dark"] .btn.primary { background:var(--primary); color:#1f1214; border-color:var(--primary); }
+[data-theme="dark"] .btn.primary:hover { background:var(--primary-dark); color:#fff; }
 
 
 .amount{font-size:15px;font-weight:600;}
@@ -142,7 +148,30 @@ body { background: linear-gradient(180deg,var(--bg) 0%,var(--surface) 100%); }
 
 
 .filter-row th { padding: 4px; background: var(--surface); }
-.col-filter { width: 100%; padding: 4px 6px; font-size: 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--card); color: var(--text); }
+.col-filter { width: 100%; padding: 6px 8px; font-size: 13px; border: 1px solid var(--border); border-radius: 6px; background: var(--card); color: var(--text); }
+
+/* filtros de pagos (visibles en lista y en vista por persona) */
+.payments-filters {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) auto;
+  gap: 10px;
+  align-items: end;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+.pf-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); min-width: 0; }
+.pf-field input, .pf-field select { width: 100%; min-width: 0; }
+.pf-clear { white-space: nowrap; }
+@media (max-width: 900px) {
+  .payments-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pf-clear { grid-column: 1 / -1; }
+}
+@media (max-width: 480px) {
+  .payments-filters { grid-template-columns: 1fr; }
+}
 
 
 .payments-grouped{margin-top:12px;display:grid;gap:14px;}
@@ -154,4 +183,16 @@ body { background: linear-gradient(180deg,var(--bg) 0%,var(--surface) 100%); }
 .mini-table th,.mini-table td{border:1px solid var(--border);padding:5px 8px;}
 .mini-table th{background:var(--primary);color:#fff;}
 .hidden{display:none !important;}
+
+/* categoría acampante / equipo */
+.category-filter{width:auto;min-width:160px;}
+.cat-badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700;line-height:1.5;}
+.cat-camper{background:#e0f2fe;color:#075985;}
+.cat-team{background:#fef3c7;color:#92400e;}
+.inline-warning{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:13px;line-height:1.45;}
+.inline-warning.hidden{display:none !important;}
+[data-theme="dark"] .cat-camper{background:#0c4a6e;color:#bae6fd;}
+[data-theme="dark"] .cat-team{background:#78350f;color:#fde68a;}
+[data-theme="dark"] .inline-warning{background:#3b2f13;color:#fde68a;border-color:#6b5a1f;}
+@media (max-width:480px){.category-filter{width:100%;min-width:0;}}
 

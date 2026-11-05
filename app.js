@@ -13,6 +13,7 @@
     filtered: [],
     currentPrice: null,
     payView: "list",
+    hasCategory: true,
   };
 
   // ---------- helpers ----------
@@ -29,7 +30,12 @@
     if (m < 0 || (m === 0 && c.getDate() < b.getDate())) age--;
     return age >= 0 ? age : "-";
   }
-  function todayISO() { return new Date().toISOString().slice(0, 10); }
+  function todayISO() {
+    const d = new Date();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return d.getFullYear() + "-" + m + "-" + day;
+  }
   function formatDate(iso) {
     if (!iso) return "-";
     const p = String(iso).split("-");
@@ -43,13 +49,17 @@
     t.classList.add("show");
     setTimeout(() => { t.classList.remove("show"); setTimeout(() => t.classList.add("hidden"), 200); }, 2800);
   }
-  function currentPrice() {
+  function currentTier() {
     const now = new Date();
-    for (const tier of (cfg.PRICE_TIERS || [])) {
-      if (now <= new Date(tier.until + "T23:59:59")) return tier.price;
+    const tiers = cfg.PRICE_TIERS || [];
+    for (const tier of tiers) {
+      if (now <= new Date(tier.until + "T23:59:59")) return tier;
     }
-    const last = (cfg.PRICE_TIERS || []).slice(-1)[0];
-    return last ? last.price : 0;
+    return tiers.length ? tiers[tiers.length - 1] : null;
+  }
+  function currentPrice() {
+    const tier = currentTier();
+    return tier ? tier.price : 0;
   }
   function lockedPrice(paid) {
     const tiers = [...(cfg.PRICE_TIERS || [])].sort((a,b)=>a.price-b.price);
@@ -107,9 +117,11 @@
       try { localStorage.setItem("jh-theme", theme); } catch(e){}
       themeToggle.textContent = theme === "dark" ? "☀️" : "🌙";
     }
-    let initialTheme = "light";
-    try { initialTheme = localStorage.getItem("jh-theme") || initialTheme; } catch(e){}
-    if (!initialTheme && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) initialTheme = "dark";
+    let initialTheme = null;
+    try { initialTheme = localStorage.getItem("jh-theme"); } catch(e){}
+    if (!initialTheme) {
+      initialTheme = (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
+    }
     applyTheme(initialTheme);
     themeToggle.addEventListener("click", () => {
       const cur = document.documentElement.getAttribute("data-theme");
@@ -118,8 +130,9 @@
 
     // price badge
     state.currentPrice = currentPrice();
+    const tier = currentTier();
     document.getElementById("priceValue").textContent = money(state.currentPrice) +
-      " (hasta " + formatDate(cfg.CAMP_DATE) + ")";
+      " (hasta " + formatDate(tier ? tier.until : cfg.CAMP_DATE) + ")";
 
     // button handlers
     document.getElementById("btnAddCamper").addEventListener("click", () => openCamperModal());
@@ -150,8 +163,30 @@
       el.addEventListener("input", renderPayments);
       el.addEventListener("change", renderPayments);
     });
+    document.getElementById("btnClearPayFilters").addEventListener("click", () => {
+      ["fPayDate","fPayCamper","fPayMode","fPayAmount","fPayNote"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = "";
+      });
+      renderPayments();
+    });
     document.getElementById("globalPaymentForm").addEventListener("submit", onSaveGlobalPayment);
     document.getElementById("searchInput").addEventListener("input", renderCampers);
+    document.getElementById("camperCategoryFilter").addEventListener("change", renderCampers);
+    document.getElementById("btnCopyCategorySql").addEventListener("click", () => {
+      const sql = [
+        "alter table public.campers add column if not exists category text not null default 'Acampante';",
+        "alter table public.campers drop constraint if exists campers_category_check;",
+        "alter table public.campers add constraint campers_category_check check (category in ('Acampante', 'Equipo'));"
+      ].join("\n");
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(sql)
+          .then(() => toast("SQL copiado. Pegalo en Supabase > SQL Editor"))
+          .catch(() => toast("No se pudo copiar. Abrí schema.sql y copiá la migración", "danger"));
+      } else {
+        toast("Abrí schema.sql y copiá la sección Migración categoría", "danger");
+      }
+    });
 
     init();
   });
@@ -162,10 +197,24 @@
     renderAll();
   }
 
+  function toggleCategoryWarning() {
+    const warning = document.getElementById("categoryWarning");
+    if (warning) warning.classList.toggle("hidden", state.hasCategory !== false);
+    const sel = document.getElementById("category");
+    if (sel) sel.disabled = state.hasCategory === false;
+  }
+
   async function loadCampers() {
     const { data, error } = await supabase.from("campers").select("*").order("last_name", { ascending: true });
     if (error) { toast("Error cargando acampantes: " + error.message, "danger"); return; }
     state.campers = data || [];
+    if (state.campers.length > 0) {
+      state.hasCategory = Object.prototype.hasOwnProperty.call(state.campers[0], "category");
+    } else {
+      const probe = await supabase.from("campers").select("category").limit(1);
+      state.hasCategory = !probe.error;
+    }
+    toggleCategoryWarning();
   }
   async function loadPayments() {
     const { data, error } = await supabase.from("payments").select("*").order("payment_date", { ascending: false });
@@ -180,21 +229,32 @@
   }
 
   // ---------- campers ----------
-  function renderCampers() {
+  function filteredCampers() {
     const q = (document.getElementById("searchInput").value || "").toLowerCase().trim();
-    state.filtered = state.campers.filter(c => {
+    const cat = (document.getElementById("camperCategoryFilter")?.value || "").trim();
+    return state.campers.filter(c => {
+      if (cat && (c.category || "Acampante") !== cat) return false;
       if (!q) return true;
-      return [c.last_name, c.first_name, c.dni, c.church, c.email, c.phone].some(v => (v || "").toLowerCase().includes(q));
+      return [c.last_name, c.first_name, c.dni, c.church, c.email, c.phone, c.category]
+        .some(v => (v || "").toLowerCase().includes(q));
     });
+  }
+  function renderCampers() {
+    state.filtered = filteredCampers();
     const tbody = document.getElementById("campersTbody");
     tbody.innerHTML = "";
     state.filtered.forEach((c, idx) => {
       const paid = paidFor(c.id);
       const due = saldoFor(paid);
+      const cat = c.category || (state.hasCategory ? "Acampante" : "");
+      const catCell = cat
+        ? `<span class="cat-badge ${cat === "Equipo" ? "cat-team" : "cat-camper"}">${escapeHtml(cat)}</span>`
+        : '<span class="muted">—</span>';
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td class="row-num">${idx + 1}</td>
         <td><strong>${escapeHtml(nameOf(c))}</strong></td>
+        <td>${catCell}</td>
         <td>${escapeHtml(c.dni || "-")}</td>
         <td>${ageAt(c.birth_date, cfg.CAMP_DATE)}</td>
         <td>${escapeHtml(c.phone || "-")}</td>
@@ -242,6 +302,7 @@
       document.getElementById("phone").value = c.phone || "";
       document.getElementById("email").value = c.email || "";
       document.getElementById("church").value = c.church || "";
+      document.getElementById("category").value = c.category || "Acampante";
     } else {
       title.textContent = "Agregar acampante";
     }
@@ -260,6 +321,7 @@
       email: document.getElementById("email").value.trim() || null,
       church: document.getElementById("church").value.trim() || null,
     };
+    if (state.hasCategory) payload.category = document.getElementById("category").value;
     if (!supabase) { toast("Configurá Supabase primero", "danger"); return; }
     let res;
     if (id) {
@@ -272,7 +334,11 @@
     await loadPayments();
     renderAll();
     closeModal("camperModalBackdrop");
-    toast(id ? "Acampante actualizado" : "Acampante agregado");
+    if (state.hasCategory) {
+      toast(id ? "Acampante actualizado" : "Acampante agregado");
+    } else {
+      toast("Guardado, pero falta habilitar la categoría en Supabase (ver schema.sql)", "danger");
+    }
   }
 
   async function deleteCamper(id) {
@@ -344,7 +410,7 @@
   function openGlobalPaymentModal(camperId) {
     const sel = document.getElementById("gpCamper");
     sel.innerHTML = "";
-    state.campers.sort((a,b)=>nameOf(a).localeCompare(nameOf(b))).forEach(c => {
+    [...state.campers].sort((a,b)=>nameOf(a).localeCompare(nameOf(b))).forEach(c => {
       const o = document.createElement("option");
       o.value = c.id; o.textContent = nameOf(c);
       sel.appendChild(o);
@@ -383,7 +449,7 @@
       const name = c ? nameOf(c) : "(eliminado)";
       if (dateQ && !formatDate(p.payment_date).toLowerCase().includes(dateQ) && !(p.payment_date || "").toLowerCase().includes(dateQ)) return false;
       if (camperQ && !name.toLowerCase().includes(camperQ)) return false;
-      if (modeQ && (p.payment_mode || "") !== modeQ) return false;
+      if (modeQ && (p.payment_mode || "").toLowerCase() !== modeQ.toLowerCase()) return false;
       if (amountQ && !String(p.amount).includes(amountQ) && !money(p.amount).toLowerCase().includes(amountQ)) return false;
       if (noteQ && !(p.note || "").toLowerCase().includes(noteQ)) return false;
       return true;
@@ -505,14 +571,16 @@
     setTimeout(() => win.print(), 600);
   }
   function exportCampersPDF() {
-    const rows = (state.filtered && state.filtered.length) ? state.filtered : state.campers;
+    const rows = filteredCampers();
     const trs = rows.map((c, idx) => {
       const paid = paidFor(c.id);
       const due = saldoFor(paid);
       const saldoCell = isSettled(paid) ? '<span class="saldado">Saldado</span>' : money(due);
+      const cat = c.category || (state.hasCategory ? "Acampante" : "-");
       return `<tr>
         <td>${idx + 1}</td>
         <td>${escapeHtml(nameOf(c))}</td>
+        <td>${escapeHtml(cat)}</td>
         <td>${escapeHtml(c.dni || "-")}</td>
         <td>${ageAt(c.birth_date, cfg.CAMP_DATE)}</td>
         <td>${escapeHtml(c.phone || "-")}</td>
@@ -528,7 +596,7 @@
       <p>Generado el ${formatDate(todayISO())} · Total: ${rows.length} acampantes</p>
       <table>
         <thead><tr>
-          <th>#</th><th>Apellido y Nombre</th><th>DNI</th><th>Edad</th><th>Celular</th><th>Mail</th><th>Iglesia</th><th>Pagado</th><th>Saldo</th>
+          <th>#</th><th>Apellido y Nombre</th><th>Categoría</th><th>DNI</th><th>Edad</th><th>Celular</th><th>Mail</th><th>Iglesia</th><th>Pagado</th><th>Saldo</th>
         </tr></thead>
         <tbody>${trs}</tbody>
       </table>

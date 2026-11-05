@@ -17,7 +17,7 @@ SUPABASE_URL: "https://TU-PROYECTO.supabase.co",
 SUPABASE_ANON_KEY: "TU_ANON_KEY",
 ```
 
-Los precios y la fecha del campamento también están ahí (`CAMP_DATE`, `PRICE_EARLY_UNTIL`, `PRICE_EARLY`, `PRICE_REGULAR`).
+Los precios y la fecha del campamento también están ahí (`CAMP_DATE`, `PRICE_TIERS`, `FIRST_TIER_PRICE`).
 
 ## 3. Probar localmente
 
@@ -34,10 +34,25 @@ Podés subir la carpeta a Netlify, Vercel, GitHub Pages o cualquier hosting est�
 
 ## Funcionalidades
 
-- Acampantes: agregar, editar, eliminar. Datos: apellido y nombre, DNI, fecha de nacimiento (edad calculada al 18/01/2027), celular, mail, iglesia.
+- Acampantes: agregar, editar, eliminar. Datos: apellido y nombre, categoría (Acampante / Equipo), DNI, fecha de nacimiento (edad calculada al 18/01/2027), celular, mail, iglesia. Se puede filtrar por categoría y el PDF respeta el filtro.
 - Pagos: agregar por acampante o desde la sección pagos, con modo (transferencia, efectivo, etc.), fecha y nota. Muestra saldo pagado y saldo a cobrar.
 - Precios por tramos: hasta 30/09/2026 = $230.000; hasta 30/11/2026 = $270.000; hasta el campamento (18/01/2027) = $320.000. Si la persona ya pagó el tramo completo ($230.000 o más), queda saldada; si no terminó de pagar, el saldo se recalcula con el precio vigente cuando se pasa la fecha.
 - Resumen con totales.
+
+## 5. Migración: categoría Acampante / Equipo
+
+Si la tabla `campers` ya existía, ejecutá esta sección en **Supabase -> SQL Editor** (también está al final de `schema.sql`):
+
+```sql
+alter table public.campers
+  add column if not exists category text not null default 'Acampante';
+
+alter table public.campers drop constraint if exists campers_category_check;
+alter table public.campers
+  add constraint campers_category_check check (category in ('Acampante', 'Equipo'));
+```
+
+Después recargá la app. Mientras la columna no exista, la app avisa y guarda los acampantes sin categoría.
 
 ## Notas de seguridad
 
